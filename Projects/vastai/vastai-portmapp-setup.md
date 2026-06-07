@@ -176,6 +176,80 @@ llama.cpp server :18000 (Qwen3-27B, GGUF)
 
 ---
 
+## Friend Onboarding
+
+To give a friend access, send them their key and the following setup script. Replace `<FRIEND_KEY>` with the key you generated for them via `openssl rand -hex 32` and added to the Caddyfile.
+
+### Setup Script
+
+Save this as `setup-opencode.sh` and send it along with their key:
+
+```bash
+#!/bin/bash
+TUNNEL_URL="https://concept-raise-virtually-accessible.trycloudflare.com"
+
+# Write OpenCode provider config
+cat > ~/.config/opencode/opencode.jsonc << EOF
+{
+  "\$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "local-qwen": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Local Qwen via Cloudflare",
+      "options": {
+        "baseURL": "${TUNNEL_URL}/v1"
+      },
+      "models": {
+        "qwen": {
+          "name": "Qwen 27B Local"
+        }
+      }
+    }
+  }
+}
+EOF
+
+echo "Config written."
+echo ""
+echo "Now run: opencode auth login"
+echo "  → Select 'Other'"
+echo "  → Provider ID: local-qwen"
+echo "  → API Key: <paste the key I gave you>"
+echo ""
+echo "Then restart OpenCode and select 'Local Qwen via Cloudflare' as your model."
+```
+
+### Instructions to Send
+
+```
+Hey! Here's how to connect to my Qwen 27B instance via OpenCode:
+
+1. Run the setup script:
+   bash setup-opencode.sh
+
+2. Then run:
+   opencode auth login
+   → Choose "Other"
+   → Provider ID: local-qwen
+   → API Key: <their key>
+
+3. Restart OpenCode — select "Local Qwen via Cloudflare" as the model.
+
+Note: the URL may change if my instance restarts. I'll send a new script if that happens.
+```
+
+### Revoking Access
+
+To revoke a friend's key, remove their `not header Authorization` line from `/etc/caddy/Caddyfile` on the Vast instance, then restart Caddy:
+
+```bash
+pkill caddy
+export LOCAL_LLM_API_KEY=$(cat /workspace/api-keys/current.key)
+caddy run --config /etc/caddy/Caddyfile &
+```
+
+---
+
 ## Part 2 — Connecting OpenCode
 
 ### Goal

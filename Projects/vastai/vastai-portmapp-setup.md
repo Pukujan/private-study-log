@@ -85,19 +85,68 @@ caddy run --config /etc/caddy/Caddyfile &
 
 ### Key Rotation Script
 
-A manual rotation script was created to generate a new master key, write it to disk, and restart Caddy with the new value:
+A manual rotation script was created to generate a new master key, write it to disk, and restart Caddy with the new value. Saved at `/workspace/rotate-key.sh`:
 
 ```bash
 #!/bin/bash
 NEW_KEY=$(openssl rand -hex 32)
 echo $NEW_KEY > /workspace/api-keys/current.key
+
+# Kill existing Caddy — reload won't pick up new env vars
 pkill caddy
+
+# Restart with new key injected into environment
 export LOCAL_LLM_API_KEY=$NEW_KEY
 caddy run --config /etc/caddy/Caddyfile &
+
 echo "Master key rotated: $NEW_KEY"
 ```
 
-Saved at `/workspace/rotate-key.sh`. Run it anytime a master key rotation is needed.
+Make it executable:
+```bash
+chmod +x /workspace/rotate-key.sh
+```
+
+Run it anytime:
+```bash
+/workspace/rotate-key.sh
+```
+
+### Caddy Admin API Dead After Process Exit
+
+`caddy reload` failed with:
+
+```
+Error: sending configuration to instance: performing request:
+Post "http://localhost:2019/load": dial tcp [::1]:2019: connect: connection refused
+```
+
+This happens when the Caddy process has exited — the admin API on port 2019 only exists while Caddy is running. `caddy reload` is not a substitute for restart. Whenever Caddy is not running, always use:
+
+```bash
+pkill caddy  # ensure clean state
+export LOCAL_LLM_API_KEY=$(cat /workspace/api-keys/current.key)
+caddy run --config /etc/caddy/Caddyfile &
+```
+
+### Unexpected Key Rotation Mid-Session
+
+During the heredoc config-writing incident, the rotate script at `/workspace/rotate-key.sh` fired as part of the shell confusion, silently replacing the master key in `/workspace/api-keys/current.key`. Caddy was still running with the old key in memory, so subsequent curl requests returned `Unauthorized` even with what appeared to be the correct key.
+
+Diagnosis: compare the running key against the file:
+
+```bash
+echo $LOCAL_LLM_API_KEY        # what Caddy has in memory
+cat /workspace/api-keys/current.key  # what's on disk
+```
+
+If they differ, the key rotated without Caddy restarting. Fix: restart Caddy to pick up the current key from disk:
+
+```bash
+pkill caddy
+export LOCAL_LLM_API_KEY=$(cat /workspace/api-keys/current.key)
+caddy run --config /etc/caddy/Caddyfile &
+```
 
 ## Final Architecture
 

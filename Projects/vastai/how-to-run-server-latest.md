@@ -109,9 +109,9 @@ Protected Local LLM API Setup
 │   ├── 10.2 Restart Caddy
 │   └── 10.3 Test new key
 │
-├── 11. Solo vs Parallel Modes
-│   ├── 11.1 Current parallel mode
-│   ├── 11.2 Solo mode
+├── 11. Solo Mode and Context Budget
+│   ├── 11.1 Chosen solo mode
+│   ├── 11.2 Why not parallel 2
 │   └── 11.3 Context tradeoff
 │
 ├── 12. Troubleshooting
@@ -179,9 +179,9 @@ Protected Local LLM API Setup
   - [10.1 Rotate Key Over SSH](#101-rotate-key-over-ssh)
   - [10.2 Restart Caddy](#102-restart-caddy)
   - [10.3 Test New Key](#103-test-new-key)
-- [11. Solo vs Parallel Modes](#11-solo-vs-parallel-modes)
-  - [11.1 Current Parallel Mode](#111-current-parallel-mode)
-  - [11.2 Solo Mode](#112-solo-mode)
+- [11. Solo Mode and Context Budget](#11-solo-mode-and-context-budget)
+  - [11.1 Chosen Solo Mode](#111-chosen-solo-mode)
+  - [11.2 Why Not Parallel 2](#112-why-not-parallel-2)
   - [11.3 Context Tradeoff](#113-context-tradeoff)
 - [12. Troubleshooting](#12-troubleshooting)
   - [12.1 Server Exits Immediately](#121-server-exits-immediately)
@@ -370,7 +370,7 @@ nohup ./build/bin/llama-server \
   -ngl 99 \
   -c 40960 \
   -fa on \
-  --parallel 2 \
+  --parallel 1 \
   --cont-batching \
   --spec-type draft-mtp \
   --spec-draft-n-max 2 \
@@ -456,12 +456,11 @@ common_speculative_impl_draft_mtp: - n_max=2
 load_model: speculative decoding context initialized
 ```
 
-For parallel slots:
+For the solo slot:
 
 ```text
-load_model: initializing slots, n_slots = 2
-slot load_model: id 0 | new slot, n_ctx = 20480
-slot load_model: id 1 | new slot, n_ctx = 20480
+load_model: initializing slots, n_slots = 1
+slot load_model: id 0 | new slot, n_ctx = 40960
 ```
 
 For multimodal / vision support:
@@ -474,18 +473,12 @@ mmproj-BF16.gguf
 Important context note:
 
 ```text
-With -c 40960 and --parallel 2:
+With -c 40960 and --parallel 1:
 
-40960 total context / 2 slots = 20480 tokens per slot
+40960 total context / 1 slot = 40960 tokens per slot
 ```
 
-So with two parallel slots, the effective context per active slot is around:
-
-```text
-20480 tokens
-```
-
-not the full 40960 per user.
+So the single active coding agent gets the full configured context budget instead of splitting it across multiple slots.
 
 ---
 
@@ -1286,14 +1279,14 @@ Then update OpenCode or any other agent with the new key.
 
 ---
 
-# 11. Solo vs Parallel Modes
+# 11. Solo Mode and Context Budget
 
-## 11.1 Current Parallel Mode
+## 11.1 Chosen Solo Mode
 
-Current command style:
+Chosen command style:
 
 ```text
---parallel 2
+--parallel 1
 -c 40960
 --cont-batching
 ```
@@ -1301,53 +1294,64 @@ Current command style:
 Meaning:
 
 ```text
-2 parallel slots
+1 active slot
 40k total context setting
 continuous batching enabled
-better for light shared use
-more VRAM pressure
+better for one serious coding agent
+less context splitting
+lower VRAM pressure than parallel 2
 ```
 
-Actual observed server behavior:
+Expected server behavior:
+
+```text
+n_slots = 1
+n_ctx per slot = 40960
+```
+
+So the effective per-slot context is:
+
+```text
+40960 / 1 = 40960 tokens
+```
+
+This is the preferred mode for a single OpenCode / coding-agent workflow.
+
+---
+
+## 11.2 Why Not Parallel 2
+
+Do not choose `--parallel 2` for this setup unless the goal is light shared access.
+
+With this model server, the configured context is divided across slots.
+
+Example:
+
+```text
+-c 40960
+--parallel 2
+```
+
+Observed behavior:
 
 ```text
 n_slots = 2
 n_ctx per slot = 20480
 ```
 
-So the effective per-slot context is:
+So each active slot only gets around:
 
 ```text
-40960 / 2 = 20480 tokens
+20480 tokens
 ```
 
-This is useful if more than one agent/person may use the API.
+That is not ideal for one long coding-agent session, because the whole point of this setup is to preserve a larger context window for repo reasoning, agent memory, phase notes, and long prompts.
 
----
-
-## 11.2 Solo Mode
-
-For only one serious coding agent:
+For this study log, the recommended mode is:
 
 ```text
 --parallel 1
 -c 40960
-```
-
-or:
-
-```text
--np 1
--c 40960
-```
-
-Meaning:
-
-```text
-1 active slot
-more comfortable solo long-context use
-lower VRAM pressure
-closer to full 40k context for one active request
 ```
 
 ---
@@ -1366,7 +1370,7 @@ Use one style.
 For this setup, use:
 
 ```text
---parallel 2
+--parallel 1
 ```
 
 The tradeoff:
@@ -1377,7 +1381,7 @@ More parallel slots = better for shared API use
 More of both = more VRAM pressure
 ```
 
-On a 24GB RTX 3090, shared long-context use can get tight.
+On a 24GB RTX 3090, one serious coding-agent session should prioritize the full per-slot context budget over shared parallel access.
 
 ---
 
@@ -1602,7 +1606,7 @@ Current setup:
 
 ```text
 one protected Vast-hosted local LLM API
-light shared inference with --parallel 2
+solo coding-agent inference with --parallel 1
 manual key rotation over SSH
 server logs for speed
 API usage for token counts

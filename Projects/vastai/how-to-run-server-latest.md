@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-07  
 **Project:** Local LLM Coding Server on Vast.ai  
-**Stack:** Vast.ai, llama.cpp, Qwen3.6 27B, Caddy, OpenCode  
+**Stack:** Vast.ai, llama.cpp, Qwen3.6 27B, Caddy, Vast.ai Tunnels, OpenCode  
 **Goal:** Run a local OpenAI-compatible LLM API, protect it with an API key, expose it through a Vast.ai tunnel, and track token usage / prompt-processing speed.
 
 ---
@@ -13,11 +13,21 @@ I wanted to run a local coding model on a rented Vast.ai GPU and use it through 
 
 At first, I thought I needed to manually set up Cloudflare Tunnel, SSH port forwarding, a Vercel admin panel, or a separate API frontend.
 
-Then I found that Vast.ai already has a **Tunnels / Open New Ports** page inside the instance portal.
+Then I noticed Vast.ai already has a **Tunnels / Open New Ports** page inside the instance portal.
 
 That changed the setup.
 
-The main idea is simple:
+The final setup is:
+
+```text
+OpenCode / agents
+→ Vast.ai tunnel URL
+→ Caddy API key check
+→ llama-server
+→ Qwen3.6 27B
+```
+
+The important rule:
 
 ```text
 Do not expose llama-server directly.
@@ -27,24 +37,12 @@ Caddy checks the API key.
 Caddy forwards valid requests to llama-server.
 ```
 
-Protected flow:
-
 ```mermaid
 flowchart TB
     A[OpenCode / Agents] --> B[Vast.ai Tunnel URL]
     B --> C[Caddy API Key Gate]
     C --> D[llama.cpp Server]
     D --> E[Qwen3.6 27B Model]
-```
-
-Runtime path:
-
-```text
-OpenCode / agents
-→ Vast tunnel URL
-→ Caddy API key check
-→ llama-server
-→ Qwen3.6 27B
 ```
 
 ---
@@ -64,10 +62,11 @@ Protected Local LLM API Setup
 │   └── 2.3 Build llama-server
 │
 ├── 3. Start the Model Server
-│   ├── 3.1 Start llama-server with logs
+│   ├── 3.1 Start llama-server with MTP and logs
 │   ├── 3.2 Check if llama-server is running
 │   ├── 3.3 Test llama-server locally
-│   └── 3.4 Stop llama-server
+│   ├── 3.4 Confirm MTP, slots, and multimodal loading
+│   └── 3.5 Stop llama-server
 │
 ├── 4. Logging and Speed Checks
 │   ├── 4.1 Watch full server logs
@@ -75,23 +74,24 @@ Protected Local LLM API Setup
 │   ├── 4.3 Check generation speed
 │   └── 4.4 Understand log vs API usage
 │
-├── 5. API Key Protection
+├── 5. API Key Protection With Caddy
 │   ├── 5.1 Create API key
 │   ├── 5.2 Install Caddy
-│   ├── 5.3 Create Caddyfile
-│   ├── 5.4 Start or restart Caddy
-│   └── 5.5 Test Caddy locally
+│   ├── 5.3 Create /etc/caddy folder
+│   ├── 5.4 Create Caddyfile
+│   ├── 5.5 Start Caddy
+│   └── 5.6 Test Caddy locally
 │
 ├── 6. Vast.ai Tunnel
 │   ├── 6.1 Create tunnel to Caddy
 │   ├── 6.2 Find public API base URL
 │   └── 6.3 Avoid tunneling directly to llama-server
 │
-├── 7. Test the Protected API
-│   ├── 7.1 Test without API key
-│   ├── 7.2 Test with API key
-│   ├── 7.3 Test models endpoint
-│   └── 7.4 Test chat completion
+├── 7. Test the Protected Public API
+│   ├── 7.1 Test public health endpoint
+│   ├── 7.2 Test public chat endpoint
+│   ├── 7.3 Confirm usage object
+│   └── 7.4 Confirm timing object
 │
 ├── 8. Token Usage Tracking
 │   ├── 8.1 Check usage with curl
@@ -112,12 +112,19 @@ Protected Local LLM API Setup
 ├── 11. Solo vs Parallel Modes
 │   ├── 11.1 Current parallel mode
 │   ├── 11.2 Solo mode
-│   └── 11.3 Tradeoff
+│   └── 11.3 Context tradeoff
 │
-└── 12. Final Layout
-    ├── 12.1 File layout
-    ├── 12.2 Runtime layout
-    └── 12.3 Notes
+├── 12. Troubleshooting
+│   ├── 12.1 Server exits immediately
+│   ├── 12.2 Port 18000 already in use
+│   ├── 12.3 Caddyfile folder missing
+│   ├── 12.4 Caddy does not start
+│   └── 12.5 Response stops early
+│
+└── 13. Final Layout
+    ├── 13.1 File layout
+    ├── 13.2 Runtime layout
+    └── 13.3 Notes
 ```
 
 ---
@@ -133,30 +140,32 @@ Protected Local LLM API Setup
   - [2.2 Clone llama.cpp](#22-clone-llamacpp)
   - [2.3 Build llama-server](#23-build-llama-server)
 - [3. Start the Model Server](#3-start-the-model-server)
-  - [3.1 Start llama-server With Logs](#31-start-llama-server-with-logs)
+  - [3.1 Start llama-server With MTP and Logs](#31-start-llama-server-with-mtp-and-logs)
   - [3.2 Check if llama-server Is Running](#32-check-if-llama-server-is-running)
   - [3.3 Test llama-server Locally](#33-test-llama-server-locally)
-  - [3.4 Stop llama-server](#34-stop-llama-server)
+  - [3.4 Confirm MTP, Slots, and Multimodal Loading](#34-confirm-mtp-slots-and-multimodal-loading)
+  - [3.5 Stop llama-server](#35-stop-llama-server)
 - [4. Logging and Speed Checks](#4-logging-and-speed-checks)
   - [4.1 Watch Full Server Logs](#41-watch-full-server-logs)
   - [4.2 Check Automatic Prompt-Processing Speed](#42-check-automatic-prompt-processing-speed)
   - [4.3 Check Generation Speed](#43-check-generation-speed)
   - [4.4 Understand Log vs API Usage](#44-understand-log-vs-api-usage)
-- [5. API Key Protection](#5-api-key-protection)
+- [5. API Key Protection With Caddy](#5-api-key-protection-with-caddy)
   - [5.1 Create API Key](#51-create-api-key)
   - [5.2 Install Caddy](#52-install-caddy)
-  - [5.3 Create Caddyfile](#53-create-caddyfile)
-  - [5.4 Start or Restart Caddy](#54-start-or-restart-caddy)
-  - [5.5 Test Caddy Locally](#55-test-caddy-locally)
+  - [5.3 Create /etc/caddy Folder](#53-create-etccaddy-folder)
+  - [5.4 Create Caddyfile](#54-create-caddyfile)
+  - [5.5 Start Caddy](#55-start-caddy)
+  - [5.6 Test Caddy Locally](#56-test-caddy-locally)
 - [6. Vast.ai Tunnel](#6-vastai-tunnel)
   - [6.1 Create Tunnel to Caddy](#61-create-tunnel-to-caddy)
   - [6.2 Find Public API Base URL](#62-find-public-api-base-url)
   - [6.3 Avoid Tunneling Directly to llama-server](#63-avoid-tunneling-directly-to-llama-server)
-- [7. Test the Protected API](#7-test-the-protected-api)
-  - [7.1 Test Without API Key](#71-test-without-api-key)
-  - [7.2 Test With API Key](#72-test-with-api-key)
-  - [7.3 Test Models Endpoint](#73-test-models-endpoint)
-  - [7.4 Test Chat Completion](#74-test-chat-completion)
+- [7. Test the Protected Public API](#7-test-the-protected-public-api)
+  - [7.1 Test Public Health Endpoint](#71-test-public-health-endpoint)
+  - [7.2 Test Public Chat Endpoint](#72-test-public-chat-endpoint)
+  - [7.3 Confirm Usage Object](#73-confirm-usage-object)
+  - [7.4 Confirm Timing Object](#74-confirm-timing-object)
 - [8. Token Usage Tracking](#8-token-usage-tracking)
   - [8.1 Check Usage With curl](#81-check-usage-with-curl)
   - [8.2 Save Full Response](#82-save-full-response)
@@ -173,11 +182,17 @@ Protected Local LLM API Setup
 - [11. Solo vs Parallel Modes](#11-solo-vs-parallel-modes)
   - [11.1 Current Parallel Mode](#111-current-parallel-mode)
   - [11.2 Solo Mode](#112-solo-mode)
-  - [11.3 Tradeoff](#113-tradeoff)
-- [12. Final Layout](#12-final-layout)
-  - [12.1 File Layout](#121-file-layout)
-  - [12.2 Runtime Layout](#122-runtime-layout)
-  - [12.3 Notes](#123-notes)
+  - [11.3 Context Tradeoff](#113-context-tradeoff)
+- [12. Troubleshooting](#12-troubleshooting)
+  - [12.1 Server Exits Immediately](#121-server-exits-immediately)
+  - [12.2 Port 18000 Already in Use](#122-port-18000-already-in-use)
+  - [12.3 Caddyfile Folder Missing](#123-caddyfile-folder-missing)
+  - [12.4 Caddy Does Not Start](#124-caddy-does-not-start)
+  - [12.5 Response Stops Early](#125-response-stops-early)
+- [13. Final Layout](#13-final-layout)
+  - [13.1 File Layout](#131-file-layout)
+  - [13.2 Runtime Layout](#132-runtime-layout)
+  - [13.3 Notes](#133-notes)
 
 ---
 
@@ -207,7 +222,9 @@ local workflow agents
 
 The API key can be reused across future agents.
 
-Image generation is separate. This model can understand images if the model/server path supports vision input, but image generation needs a different image-generation model or service.
+This model can understand images if the model/server path supports vision input.
+
+Image generation is separate and needs a different image-generation model or service.
 
 ---
 
@@ -277,7 +294,7 @@ export HF_HOME=/workspace/.hf_home
 export LLAMA_CACHE=/workspace/.hf_home
 
 apt update
-apt install -y git cmake build-essential curl python3-pip jq
+apt install -y git cmake build-essential curl python3-pip jq lsof
 ```
 
 What these are for:
@@ -287,6 +304,7 @@ git = clone llama.cpp
 cmake/build-essential = build llama.cpp
 curl = test the API
 jq = read token usage from JSON responses
+lsof = check which process is using a port
 python3-pip = optional SDK/testing tools
 ```
 
@@ -323,7 +341,7 @@ After this, the server binary should be here:
 
 # 3. Start the Model Server
 
-## 3.1 Start llama-server With Logs
+## 3.1 Start llama-server With MTP and Logs
 
 This starts the model server privately on:
 
@@ -373,20 +391,29 @@ Caddy will be the public-facing gateway.
 
 ## 3.2 Check if llama-server Is Running
 
+Check the process:
+
 ```bash
 ps aux | grep llama-server
 ```
 
-Another check:
+Check by PID if the shell gives one:
+
+```bash
+ps -p <PID> -f
+```
+
+Check the port:
 
 ```bash
 lsof -i :18000
 ```
 
-If `lsof` is missing:
+Expected shape:
 
-```bash
-apt install -y lsof
+```text
+COMMAND    PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+llama-ser  8155 root   34u  IPv4 ...    0t0      TCP localhost:18000 (LISTEN)
 ```
 
 ---
@@ -405,7 +432,64 @@ Expected:
 
 ---
 
-## 3.4 Stop llama-server
+## 3.4 Confirm MTP, Slots, and Multimodal Loading
+
+Check the log:
+
+```bash
+tail -n 120 /workspace/logs/llama-server.log
+```
+
+Good signs:
+
+```text
+llama_server: model loaded
+llama_server: server is listening on http://127.0.0.1:18000
+update_slots: all slots are idle
+```
+
+For MTP:
+
+```text
+common_speculative_impl_draft_mtp: adding speculative implementation 'draft-mtp'
+common_speculative_impl_draft_mtp: - n_max=2
+load_model: speculative decoding context initialized
+```
+
+For parallel slots:
+
+```text
+load_model: initializing slots, n_slots = 2
+slot load_model: id 0 | new slot, n_ctx = 20480
+slot load_model: id 1 | new slot, n_ctx = 20480
+```
+
+For multimodal / vision support:
+
+```text
+loaded multimodal model
+mmproj-BF16.gguf
+```
+
+Important context note:
+
+```text
+With -c 40960 and --parallel 2:
+
+40960 total context / 2 slots = 20480 tokens per slot
+```
+
+So with two parallel slots, the effective context per active slot is around:
+
+```text
+20480 tokens
+```
+
+not the full 40960 per user.
+
+---
+
+## 3.5 Stop llama-server
 
 ```bash
 pkill llama-server
@@ -415,6 +499,7 @@ Then confirm:
 
 ```bash
 ps aux | grep llama-server
+lsof -i :18000
 ```
 
 ---
@@ -438,6 +523,7 @@ prompt eval timing
 generation timing
 batching behavior
 KV/cache warnings
+MTP draft behavior
 ```
 
 ---
@@ -517,9 +603,12 @@ llama-server.log
 
 API response .usage
 = prompt_tokens, completion_tokens, total_tokens
+
+API response .timings
+= prompt speed, generation speed, MTP draft stats
 ```
 
-Use logs for speed:
+Use logs for server-side speed:
 
 ```bash
 tail -f /workspace/logs/llama-server.log
@@ -531,9 +620,15 @@ Use API response for token counts:
 curl ... | jq '.usage'
 ```
 
+Use API response for request-level timings:
+
+```bash
+curl ... | jq '.timings'
+```
+
 ---
 
-# 5. API Key Protection
+# 5. API Key Protection With Caddy
 
 ## 5.1 Create API Key
 
@@ -572,6 +667,8 @@ Anyone with both the tunnel URL and this key can use the GPU endpoint.
 
 ## 5.2 Install Caddy
 
+If Caddy is not installed:
+
 ```bash
 apt install -y debian-keyring debian-archive-keyring apt-transport-https curl gpg
 
@@ -585,9 +682,39 @@ apt update
 apt install -y caddy
 ```
 
+Check Caddy:
+
+```bash
+caddy version
+```
+
 ---
 
-## 5.3 Create Caddyfile
+## 5.3 Create /etc/caddy Folder
+
+If this command fails:
+
+```bash
+cat > /etc/caddy/Caddyfile
+```
+
+with:
+
+```text
+No such file or directory
+```
+
+then the folder does not exist yet.
+
+Create it:
+
+```bash
+mkdir -p /etc/caddy
+```
+
+---
+
+## 5.4 Create Caddyfile
 
 ```bash
 cat > /etc/caddy/Caddyfile <<'CADDY'
@@ -620,7 +747,7 @@ Authorization: Bearer <LOCAL_LLM_API_KEY>
 
 ---
 
-## 5.4 Start or Restart Caddy
+## 5.5 Start Caddy
 
 Load the key into the environment:
 
@@ -645,11 +772,25 @@ If supervisor does not manage Caddy, run it manually:
 ```bash
 mkdir -p /workspace/logs
 
+export LOCAL_LLM_API_KEY="$(cat /workspace/api-keys/current.key)"
+
 nohup caddy run --config /etc/caddy/Caddyfile \
   > /workspace/logs/caddy.log 2>&1 &
 ```
 
+Check if Caddy stayed running:
+
+```bash
+ps aux | grep caddy
+```
+
 Watch Caddy logs:
+
+```bash
+tail -n 80 /workspace/logs/caddy.log
+```
+
+Live Caddy logs:
 
 ```bash
 tail -f /workspace/logs/caddy.log
@@ -657,9 +798,9 @@ tail -f /workspace/logs/caddy.log
 
 ---
 
-## 5.5 Test Caddy Locally
+## 5.6 Test Caddy Locally
 
-Without API key:
+Test without API key:
 
 ```bash
 curl http://127.0.0.1:18001/health
@@ -671,7 +812,7 @@ Expected:
 Unauthorized
 ```
 
-With API key:
+Test with API key:
 
 ```bash
 curl http://127.0.0.1:18001/health \
@@ -684,11 +825,22 @@ Expected:
 {"status":"ok"}
 ```
 
+This confirms:
+
+```text
+llama-server is running on 18000
+Caddy is running on 18001
+Caddy is enforcing the API key
+Caddy is forwarding valid requests to llama-server
+```
+
 ---
 
 # 6. Vast.ai Tunnel
 
 ## 6.1 Create Tunnel to Caddy
+
+This is done from the **Vast.ai web UI**, not the terminal.
 
 Open the Vast.ai instance page.
 
@@ -766,25 +918,11 @@ localhost:18001 = Caddy protected gateway
 
 ---
 
-# 7. Test the Protected API
+# 7. Test the Protected Public API
 
-## 7.1 Test Without API Key
+## 7.1 Test Public Health Endpoint
 
-This should fail:
-
-```bash
-curl https://example-words-here.trycloudflare.com/health
-```
-
-Expected:
-
-```text
-Unauthorized
-```
-
----
-
-## 7.2 Test With API Key
+From the Vast server or your laptop:
 
 ```bash
 curl https://example-words-here.trycloudflare.com/health \
@@ -797,18 +935,22 @@ Expected:
 {"status":"ok"}
 ```
 
----
-
-## 7.3 Test Models Endpoint
+If testing from your laptop, paste the actual API key instead of using:
 
 ```bash
-curl https://example-words-here.trycloudflare.com/v1/models \
-  -H "Authorization: Bearer $(cat /workspace/api-keys/current.key)"
+$(cat /workspace/api-keys/current.key)
+```
+
+Example:
+
+```bash
+curl https://example-words-here.trycloudflare.com/health \
+  -H "Authorization: Bearer YOUR_API_KEY_HERE"
 ```
 
 ---
 
-## 7.4 Test Chat Completion
+## 7.2 Test Public Chat Endpoint
 
 ```bash
 curl https://example-words-here.trycloudflare.com/v1/chat/completions \
@@ -822,30 +964,83 @@ curl https://example-words-here.trycloudflare.com/v1/chat/completions \
         "content": "Say ready."
       }
     ],
-    "max_tokens": 20,
+    "max_tokens": 100,
     "temperature": 0
   }'
 ```
 
-If this responds, the protected API is working.
+If this responds, the protected public API is working.
+
+---
+
+## 7.3 Confirm Usage Object
+
+The response should include something like:
+
+```json
+"usage": {
+  "completion_tokens": 20,
+  "prompt_tokens": 13,
+  "total_tokens": 33,
+  "prompt_tokens_details": {
+    "cached_tokens": 0
+  }
+}
+```
+
+Meaning:
+
+```text
+prompt_tokens = input tokens
+completion_tokens = generated tokens
+total_tokens = prompt_tokens + completion_tokens
+cached_tokens = prompt tokens reused from cache, if any
+```
+
+---
+
+## 7.4 Confirm Timing Object
+
+The response may also include:
+
+```json
+"timings": {
+  "cache_n": 0,
+  "prompt_n": 13,
+  "prompt_ms": 501.05,
+  "prompt_per_token_ms": 38.54,
+  "prompt_per_second": 25.94,
+  "predicted_n": 20,
+  "predicted_ms": 362.591,
+  "predicted_per_token_ms": 18.12,
+  "predicted_per_second": 55.15,
+  "draft_n": 12,
+  "draft_n_accepted": 12
+}
+```
+
+Meaning:
+
+```text
+prompt_n = prompt/input tokens processed
+prompt_ms = time spent processing prompt
+prompt_per_second = prompt processing speed
+
+predicted_n = generated tokens
+predicted_ms = time spent generating
+predicted_per_second = generation speed
+
+draft_n = MTP draft tokens proposed
+draft_n_accepted = MTP draft tokens accepted
+```
+
+This confirms that token/timing data can be checked directly from the API response.
 
 ---
 
 # 8. Token Usage Tracking
 
 ## 8.1 Check Usage With curl
-
-The OpenAI-compatible response may include:
-
-```json
-{
-  "usage": {
-    "prompt_tokens": 1234,
-    "completion_tokens": 200,
-    "total_tokens": 1434
-  }
-}
-```
 
 Run:
 
@@ -861,7 +1056,7 @@ curl -s https://example-words-here.trycloudflare.com/v1/chat/completions \
         "content": "Say ready."
       }
     ],
-    "max_tokens": 20,
+    "max_tokens": 100,
     "temperature": 0
   }' | jq '.usage'
 ```
@@ -870,9 +1065,12 @@ Expected shape:
 
 ```json
 {
-  "prompt_tokens": 18,
-  "completion_tokens": 4,
-  "total_tokens": 22
+  "prompt_tokens": 13,
+  "completion_tokens": 20,
+  "total_tokens": 33,
+  "prompt_tokens_details": {
+    "cached_tokens": 0
+  }
 }
 ```
 
@@ -892,7 +1090,7 @@ curl -s https://example-words-here.trycloudflare.com/v1/chat/completions \
         "content": "Say ready."
       }
     ],
-    "max_tokens": 20,
+    "max_tokens": 100,
     "temperature": 0
   }' | tee /workspace/logs/last_response.json
 ```
@@ -901,6 +1099,12 @@ Inspect usage:
 
 ```bash
 cat /workspace/logs/last_response.json | jq '.usage'
+```
+
+Inspect timings:
+
+```bash
+cat /workspace/logs/last_response.json | jq '.timings'
 ```
 
 Inspect the whole response:
@@ -945,7 +1149,7 @@ For future agents, log this shape:
 
 llama.cpp automatically calculates speed in the server logs.
 
-The API usage object gives token counts.
+The API response gives token counts and may also give timings.
 
 So:
 
@@ -955,6 +1159,9 @@ llama-server.log
 
 response.usage
 = prompt token count, completion token count, total token count
+
+response.timings
+= per-request prompt speed, generation speed, and MTP draft stats
 ```
 
 If `.usage` returns `null`, the server/framework may not be exposing usage for that request.
@@ -988,7 +1195,11 @@ Use:
 qwen
 ```
 
-or whatever model name your server exposes in `/v1/models`.
+or whatever model name your server exposes in:
+
+```text
+/v1/models
+```
 
 ---
 
@@ -1091,10 +1302,23 @@ Meaning:
 
 ```text
 2 parallel slots
-40k context setting
+40k total context setting
 continuous batching enabled
 better for light shared use
 more VRAM pressure
+```
+
+Actual observed server behavior:
+
+```text
+n_slots = 2
+n_ctx per slot = 20480
+```
+
+So the effective per-slot context is:
+
+```text
+40960 / 2 = 20480 tokens
 ```
 
 This is useful if more than one agent/person may use the API.
@@ -1123,11 +1347,12 @@ Meaning:
 1 active slot
 more comfortable solo long-context use
 lower VRAM pressure
+closer to full 40k context for one active request
 ```
 
 ---
 
-## 11.3 Tradeoff
+## 11.3 Context Tradeoff
 
 Do not use both of these together unless the llama.cpp version expects it:
 
@@ -1156,9 +1381,173 @@ On a 24GB RTX 3090, shared long-context use can get tight.
 
 ---
 
-# 12. Final Layout
+# 12. Troubleshooting
 
-## 12.1 File Layout
+## 12.1 Server Exits Immediately
+
+If this happens:
+
+```text
+[2]+ Exit 1 nohup ./build/bin/llama-server ...
+```
+
+Check the log:
+
+```bash
+tail -n 120 /workspace/logs/llama-server.log
+```
+
+The log will usually explain the reason.
+
+---
+
+## 12.2 Port 18000 Already in Use
+
+If the log says:
+
+```text
+couldn't bind HTTP server socket, hostname: 127.0.0.1, port: 18000
+```
+
+then another process is already using port `18000`.
+
+Check:
+
+```bash
+lsof -i :18000
+```
+
+Example:
+
+```text
+COMMAND    PID USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+llama-ser  8155 root   34u  IPv4 ...    0t0      TCP localhost:18000 (LISTEN)
+```
+
+If it is already running and healthy, do not start another copy.
+
+Test:
+
+```bash
+curl http://127.0.0.1:18000/health
+```
+
+If you need to restart from scratch:
+
+```bash
+pkill llama-server
+```
+
+Then start it again.
+
+---
+
+## 12.3 Caddyfile Folder Missing
+
+If this command:
+
+```bash
+cat > /etc/caddy/Caddyfile
+```
+
+fails with:
+
+```text
+No such file or directory
+```
+
+create the folder first:
+
+```bash
+mkdir -p /etc/caddy
+```
+
+Then create the Caddyfile again.
+
+---
+
+## 12.4 Caddy Does Not Start
+
+Check Caddy logs:
+
+```bash
+tail -n 80 /workspace/logs/caddy.log
+```
+
+Check if Caddy is running:
+
+```bash
+ps aux | grep caddy
+```
+
+Check the port:
+
+```bash
+lsof -i :18001
+```
+
+Test without key:
+
+```bash
+curl http://127.0.0.1:18001/health
+```
+
+Expected:
+
+```text
+Unauthorized
+```
+
+Test with key:
+
+```bash
+curl http://127.0.0.1:18001/health \
+  -H "Authorization: Bearer $(cat /workspace/api-keys/current.key)"
+```
+
+Expected:
+
+```json
+{"status":"ok"}
+```
+
+---
+
+## 12.5 Response Stops Early
+
+If the response ends inside thinking or cuts off, check:
+
+```json
+"finish_reason": "length"
+```
+
+That means `max_tokens` was too low.
+
+Example problem:
+
+```json
+"finish_reason": "length"
+```
+
+with:
+
+```json
+"max_tokens": 20
+```
+
+For real use, increase output tokens:
+
+```json
+"max_tokens": 1000
+```
+
+or higher depending on the task.
+
+---
+
+# 13. Final Layout
+
+## 13.1 File Layout
 
 ```text
 /workspace
@@ -1176,7 +1565,7 @@ On a 24GB RTX 3090, shared long-context use can get tight.
 
 ---
 
-## 12.2 Runtime Layout
+## 13.2 Runtime Layout
 
 ```mermaid
 flowchart TB
@@ -1207,7 +1596,7 @@ https://your-tunnel-url.trycloudflare.com/v1
 
 ---
 
-## 12.3 Notes
+## 13.3 Notes
 
 Current setup:
 
@@ -1217,6 +1606,7 @@ light shared inference with --parallel 2
 manual key rotation over SSH
 server logs for speed
 API usage for token counts
+API timings for per-request speed and MTP stats
 ```
 
 Direct SSH workflow:
@@ -1224,8 +1614,13 @@ Direct SSH workflow:
 ```text
 SSH into Vast
 → start llama-server
-→ start/restart Caddy
-→ create Vast tunnel
+→ create API key
+→ create /etc/caddy folder
+→ create Caddyfile
+→ start Caddy
+→ test local Caddy auth
+→ create Vast tunnel to localhost:18001
+→ test public API
 → use tunnel URL in OpenCode
 → rotate key manually when needed
 ```
@@ -1236,7 +1631,7 @@ Useful live log command:
 tail -f /workspace/logs/llama-server.log | grep -Ei "prompt eval|eval time|tokens per second|tok/s"
 ```
 
-Useful token usage command:
+Useful API usage command:
 
 ```bash
 curl -s https://example-words-here.trycloudflare.com/v1/chat/completions \
@@ -1250,13 +1645,40 @@ curl -s https://example-words-here.trycloudflare.com/v1/chat/completions \
         "content": "Say ready."
       }
     ],
-    "max_tokens": 20,
+    "max_tokens": 100,
     "temperature": 0
   }' | jq '.usage'
+```
+
+Useful API timing command:
+
+```bash
+curl -s https://example-words-here.trycloudflare.com/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $(cat /workspace/api-keys/current.key)" \
+  -d '{
+    "model": "qwen",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Say ready."
+      }
+    ],
+    "max_tokens": 100,
+    "temperature": 0
+  }' | jq '.timings'
 ```
 
 Main rule:
 
 ```text
 Tunnel to Caddy, not directly to llama-server.
+```
+
+Security note:
+
+```text
+Do not publish the real API key in a blog post.
+Use placeholders like YOUR_API_KEY_HERE.
+Rotate the key if it was accidentally shared.
 ```

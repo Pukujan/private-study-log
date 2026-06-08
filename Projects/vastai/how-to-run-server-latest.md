@@ -3,7 +3,7 @@
 **Date:** 2026-06-07  
 **Project:** Local LLM Coding Server on Vast.ai  
 **Stack:** Vast.ai, llama.cpp, Qwen3.6 27B, Caddy, Vast.ai Tunnels, OpenCode  
-**Goal:** Run a local OpenAI-compatible LLM API, protect it with an API key, expose it through a Vast.ai tunnel, and track token usage / prompt-processing speed.
+**Goal:** Run a local OpenAI-compatible LLM API, protect it with an API key, expose it through a Vast.ai tunnel, and use it from OpenCode / coding agents.
 
 ---
 
@@ -62,17 +62,17 @@ Protected Local LLM API Setup
 │   └── 2.3 Build llama-server
 │
 ├── 3. Start the Model Server
-│   ├── 3.1 Start llama-server with MTP and logs
+│   ├── 3.1 Start llama-server with MTP
 │   ├── 3.2 Check if llama-server is running
 │   ├── 3.3 Test llama-server locally
-│   ├── 3.4 Confirm MTP, slots, and multimodal loading
+│   ├── 3.4 Confirm MTP and solo slot context
 │   └── 3.5 Stop llama-server
 │
-├── 4. Logging and Speed Checks
-│   ├── 4.1 Watch full server logs
-│   ├── 4.2 Check automatic prompt-processing speed
+├── 4. Logs and Speed Checks
+│   ├── 4.1 Watch server logs
+│   ├── 4.2 Check prompt-processing speed
 │   ├── 4.3 Check generation speed
-│   └── 4.4 Understand log vs API usage
+│   └── 4.4 Check API usage and timings
 │
 ├── 5. API Key Protection With Caddy
 │   ├── 5.1 Create API key
@@ -93,11 +93,11 @@ Protected Local LLM API Setup
 │   ├── 7.3 Confirm usage object
 │   └── 7.4 Confirm timing object
 │
-├── 8. Token Usage Tracking
+├── 8. Token Usage Checks
 │   ├── 8.1 Check usage with curl
 │   ├── 8.2 Save full response
 │   ├── 8.3 Read prompt/completion/total tokens
-│   └── 8.4 Note about automatic calculations
+│   └── 8.4 Note about logs vs API response
 │
 ├── 9. OpenCode Setup
 │   ├── 9.1 Base URL
@@ -119,7 +119,8 @@ Protected Local LLM API Setup
 │   ├── 12.2 Port 18000 already in use
 │   ├── 12.3 Caddyfile folder missing
 │   ├── 12.4 Caddy does not start
-│   └── 12.5 Response stops early
+│   ├── 12.5 Response stops early
+│   └── 12.6 Logs do not show token usage
 │
 └── 13. Final Layout
     ├── 13.1 File layout
@@ -140,16 +141,16 @@ Protected Local LLM API Setup
   - [2.2 Clone llama.cpp](#22-clone-llamacpp)
   - [2.3 Build llama-server](#23-build-llama-server)
 - [3. Start the Model Server](#3-start-the-model-server)
-  - [3.1 Start llama-server With MTP and Logs](#31-start-llama-server-with-mtp-and-logs)
+  - [3.1 Start llama-server With MTP](#31-start-llama-server-with-mtp)
   - [3.2 Check if llama-server Is Running](#32-check-if-llama-server-is-running)
   - [3.3 Test llama-server Locally](#33-test-llama-server-locally)
-  - [3.4 Confirm MTP, Slots, and Multimodal Loading](#34-confirm-mtp-slots-and-multimodal-loading)
+  - [3.4 Confirm MTP and Solo Slot Context](#34-confirm-mtp-and-solo-slot-context)
   - [3.5 Stop llama-server](#35-stop-llama-server)
-- [4. Logging and Speed Checks](#4-logging-and-speed-checks)
-  - [4.1 Watch Full Server Logs](#41-watch-full-server-logs)
-  - [4.2 Check Automatic Prompt-Processing Speed](#42-check-automatic-prompt-processing-speed)
+- [4. Logs and Speed Checks](#4-logs-and-speed-checks)
+  - [4.1 Watch Server Logs](#41-watch-server-logs)
+  - [4.2 Check Prompt-Processing Speed](#42-check-prompt-processing-speed)
   - [4.3 Check Generation Speed](#43-check-generation-speed)
-  - [4.4 Understand Log vs API Usage](#44-understand-log-vs-api-usage)
+  - [4.4 Check API Usage and Timings](#44-check-api-usage-and-timings)
 - [5. API Key Protection With Caddy](#5-api-key-protection-with-caddy)
   - [5.1 Create API Key](#51-create-api-key)
   - [5.2 Install Caddy](#52-install-caddy)
@@ -166,11 +167,11 @@ Protected Local LLM API Setup
   - [7.2 Test Public Chat Endpoint](#72-test-public-chat-endpoint)
   - [7.3 Confirm Usage Object](#73-confirm-usage-object)
   - [7.4 Confirm Timing Object](#74-confirm-timing-object)
-- [8. Token Usage Tracking](#8-token-usage-tracking)
+- [8. Token Usage Checks](#8-token-usage-checks)
   - [8.1 Check Usage With curl](#81-check-usage-with-curl)
   - [8.2 Save Full Response](#82-save-full-response)
   - [8.3 Read Prompt, Completion, and Total Tokens](#83-read-prompt-completion-and-total-tokens)
-  - [8.4 Note About Automatic Calculations](#84-note-about-automatic-calculations)
+  - [8.4 Note About Logs vs API Response](#84-note-about-logs-vs-api-response)
 - [9. OpenCode Setup](#9-opencode-setup)
   - [9.1 Base URL](#91-base-url)
   - [9.2 Model Name](#92-model-name)
@@ -189,6 +190,7 @@ Protected Local LLM API Setup
   - [12.3 Caddyfile Folder Missing](#123-caddyfile-folder-missing)
   - [12.4 Caddy Does Not Start](#124-caddy-does-not-start)
   - [12.5 Response Stops Early](#125-response-stops-early)
+  - [12.6 Logs Do Not Show Token Usage](#126-logs-do-not-show-token-usage)
 - [13. Final Layout](#13-final-layout)
   - [13.1 File Layout](#131-file-layout)
   - [13.2 Runtime Layout](#132-runtime-layout)
@@ -341,7 +343,7 @@ After this, the server binary should be here:
 
 # 3. Start the Model Server
 
-## 3.1 Start llama-server With MTP and Logs
+## 3.1 Start llama-server With MTP
 
 This starts the model server privately on:
 
@@ -349,7 +351,7 @@ This starts the model server privately on:
 http://127.0.0.1:18000
 ```
 
-It also saves server logs to:
+It saves server logs to:
 
 ```text
 /workspace/logs/llama-server.log
@@ -387,6 +389,27 @@ llama-server should stay private.
 Caddy will be the public-facing gateway.
 ```
 
+Why `--parallel 1`:
+
+```text
+This setup is for one serious coding-agent session.
+The goal is to preserve the full configured context for one active slot.
+```
+
+Why `--spec-type draft-mtp`:
+
+```text
+The Qwen3.6 MTP GGUF supports MTP-style speculative decoding.
+This enables MTP in llama.cpp.
+```
+
+Why `--spec-draft-n-max 2`:
+
+```text
+This lets the server draft up to 2 tokens ahead for MTP speculative decoding.
+This matches the common recommended llama.cpp setup for this model.
+```
+
 ---
 
 ## 3.2 Check if llama-server Is Running
@@ -401,6 +424,12 @@ Check by PID if the shell gives one:
 
 ```bash
 ps -p <PID> -f
+```
+
+Check the full command:
+
+```bash
+ps -ww -p <PID> -o args=
 ```
 
 Check the port:
@@ -432,7 +461,7 @@ Expected:
 
 ---
 
-## 3.4 Confirm MTP, Slots, and Multimodal Loading
+## 3.4 Confirm MTP and Solo Slot Context
 
 Check the log:
 
@@ -463,13 +492,6 @@ load_model: initializing slots, n_slots = 1
 slot load_model: id 0 | new slot, n_ctx = 40960
 ```
 
-For multimodal / vision support:
-
-```text
-loaded multimodal model
-mmproj-BF16.gguf
-```
-
 Important context note:
 
 ```text
@@ -497,15 +519,15 @@ lsof -i :18000
 
 ---
 
-# 4. Logging and Speed Checks
+# 4. Logs and Speed Checks
 
-## 4.1 Watch Full Server Logs
+## 4.1 Watch Server Logs
 
 ```bash
 tail -f /workspace/logs/llama-server.log
 ```
 
-This shows:
+This can show:
 
 ```text
 server startup logs
@@ -521,11 +543,9 @@ MTP draft behavior
 
 ---
 
-## 4.2 Check Automatic Prompt-Processing Speed
+## 4.2 Check Prompt-Processing Speed
 
-llama.cpp automatically calculates prompt-processing speed in the server logs.
-
-I do not need to manually calculate tokens per second.
+llama.cpp may print prompt-processing timing in the server logs.
 
 After sending a request, run:
 
@@ -554,11 +574,13 @@ prompt eval time = how long prompt processing took
 prompt eval speed = prompt processing tokens/sec
 ```
 
+If the server log does not show the numbers clearly, use the API response `.timings` field instead.
+
 ---
 
 ## 4.3 Check Generation Speed
 
-Generation speed is also automatically calculated in the logs.
+Generation speed may also appear in the logs.
 
 Search for generation/eval timing:
 
@@ -584,24 +606,30 @@ eval speed
 = how fast the server generates the answer
 ```
 
+If the log does not show it clearly, check:
+
+```bash
+curl ... | jq '.timings'
+```
+
 ---
 
-## 4.4 Understand Log vs API Usage
+## 4.4 Check API Usage and Timings
 
 There are two useful sources of data:
 
 ```text
 llama-server.log
-= speed, timing, prompt eval, generation eval
+= startup logs, request logs, server timing if printed
 
 API response .usage
 = prompt_tokens, completion_tokens, total_tokens
 
 API response .timings
-= prompt speed, generation speed, MTP draft stats
+= prompt speed, generation speed, and MTP draft stats when exposed
 ```
 
-Use logs for server-side speed:
+Use logs for server-side debugging:
 
 ```bash
 tail -f /workspace/logs/llama-server.log
@@ -631,11 +659,13 @@ Create a folder for API keys:
 mkdir -p /workspace/api-keys
 ```
 
-Generate a key:
+Generate a key only if one does not already exist:
 
 ```bash
-openssl rand -hex 32 > /workspace/api-keys/current.key
-chmod 600 /workspace/api-keys/current.key
+if [ ! -f /workspace/api-keys/current.key ]; then
+  openssl rand -hex 32 > /workspace/api-keys/current.key
+  chmod 600 /workspace/api-keys/current.key
+fi
 ```
 
 Print the key:
@@ -709,7 +739,11 @@ mkdir -p /etc/caddy
 
 ## 5.4 Create Caddyfile
 
+Create the Caddyfile:
+
 ```bash
+mkdir -p /etc/caddy
+
 cat > /etc/caddy/Caddyfile <<'CADDY'
 {
     auto_https off
@@ -738,6 +772,10 @@ Caddy requires:
 Authorization: Bearer <LOCAL_LLM_API_KEY>
 ```
 
+There is no token logger or proxy layer in this setup.
+
+Caddy forwards valid requests directly to llama-server.
+
 ---
 
 ## 5.5 Start Caddy
@@ -748,24 +786,16 @@ Load the key into the environment:
 export LOCAL_LLM_API_KEY="$(cat /workspace/api-keys/current.key)"
 ```
 
-If Caddy is managed by supervisor:
+If Caddy is already running, stop it:
 
 ```bash
-supervisorctl restart caddy
+pkill caddy || true
 ```
 
-Check supervisor:
-
-```bash
-supervisorctl status
-```
-
-If supervisor does not manage Caddy, run it manually:
+Start Caddy manually:
 
 ```bash
 mkdir -p /workspace/logs
-
-export LOCAL_LLM_API_KEY="$(cat /workspace/api-keys/current.key)"
 
 nohup caddy run --config /etc/caddy/Caddyfile \
   > /workspace/logs/caddy.log 2>&1 &
@@ -787,6 +817,14 @@ Live Caddy logs:
 
 ```bash
 tail -f /workspace/logs/caddy.log
+```
+
+If Caddy is managed by supervisor instead:
+
+```bash
+export LOCAL_LLM_API_KEY="$(cat /workspace/api-keys/current.key)"
+supervisorctl restart caddy
+supervisorctl status
 ```
 
 ---
@@ -915,7 +953,7 @@ localhost:18001 = Caddy protected gateway
 
 ## 7.1 Test Public Health Endpoint
 
-From the Vast server or your laptop:
+From the Vast server:
 
 ```bash
 curl https://example-words-here.trycloudflare.com/health \
@@ -964,11 +1002,19 @@ curl https://example-words-here.trycloudflare.com/v1/chat/completions \
 
 If this responds, the protected public API is working.
 
+If testing from your laptop, replace:
+
+```bash
+$(cat /workspace/api-keys/current.key)
+```
+
+with the actual API key.
+
 ---
 
 ## 7.3 Confirm Usage Object
 
-The response should include something like:
+The response may include something like:
 
 ```json
 "usage": {
@@ -1027,11 +1073,11 @@ draft_n = MTP draft tokens proposed
 draft_n_accepted = MTP draft tokens accepted
 ```
 
-This confirms that token/timing data can be checked directly from the API response.
+This confirms that request-level token and timing data can be checked directly from the API response when llama.cpp exposes those fields.
 
 ---
 
-# 8. Token Usage Tracking
+# 8. Token Usage Checks
 
 ## 8.1 Check Usage With curl
 
@@ -1123,7 +1169,7 @@ total_tokens
 = prompt_tokens + completion_tokens
 ```
 
-For future agents, log this shape:
+For future agent-side logging, the client can save this shape:
 
 ```json
 {
@@ -1136,34 +1182,50 @@ For future agents, log this shape:
 }
 ```
 
+This is client-side logging.
+
+It is separate from the server setup.
+
 ---
 
-## 8.4 Note About Automatic Calculations
+## 8.4 Note About Logs vs API Response
 
-llama.cpp automatically calculates speed in the server logs.
+This setup does not add a separate token logger.
 
-The API response gives token counts and may also give timings.
-
-So:
+The available tracking sources are:
 
 ```text
 llama-server.log
-= prompt-processing speed and generation speed
+= server startup logs, errors, request logs, timing logs if printed
 
 response.usage
 = prompt token count, completion token count, total token count
 
 response.timings
-= per-request prompt speed, generation speed, and MTP draft stats
+= per-request prompt speed, generation speed, and MTP draft stats when exposed
 ```
 
 If `.usage` returns `null`, the server/framework may not be exposing usage for that request.
 
+If `.timings` returns `null`, the server/framework may not be exposing timing metadata for that request.
+
 In that case:
 
 ```text
-Use llama-server logs for prompt eval timing.
-Add client-side or proxy-side usage logging later if needed.
+Use llama-server logs for server debugging.
+Use client-side logging later if exact per-request accounting is needed.
+```
+
+For this study log, the setup intentionally stays simple:
+
+```text
+Caddy → llama-server
+```
+
+not:
+
+```text
+Caddy → token logger proxy → llama-server
 ```
 
 ---
@@ -1192,6 +1254,13 @@ or whatever model name your server exposes in:
 
 ```text
 /v1/models
+```
+
+Check models:
+
+```bash
+curl https://example-words-here.trycloudflare.com/v1/models \
+  -H "Authorization: Bearer YOUR_API_KEY_HERE"
 ```
 
 ---
@@ -1248,14 +1317,9 @@ cat /workspace/api-keys/current.key
 
 ## 10.2 Restart Caddy
 
-Restart Caddy so it uses the new key:
+Restart Caddy so it uses the new key.
 
-```bash
-export LOCAL_LLM_API_KEY="$(cat /workspace/api-keys/current.key)"
-supervisorctl restart caddy
-```
-
-If Caddy is not managed by supervisor:
+Manual Caddy process:
 
 ```bash
 pkill caddy || true
@@ -1264,6 +1328,13 @@ export LOCAL_LLM_API_KEY="$(cat /workspace/api-keys/current.key)"
 
 nohup caddy run --config /etc/caddy/Caddyfile \
   > /workspace/logs/caddy.log 2>&1 &
+```
+
+If Caddy is managed by supervisor:
+
+```bash
+export LOCAL_LLM_API_KEY="$(cat /workspace/api-keys/current.key)"
+supervisorctl restart caddy
 ```
 
 ---
@@ -1402,6 +1473,16 @@ tail -n 120 /workspace/logs/llama-server.log
 ```
 
 The log will usually explain the reason.
+
+Common causes:
+
+```text
+model download issue
+not enough VRAM
+wrong llama.cpp build
+port already in use
+unsupported flag
+```
 
 ---
 
@@ -1549,6 +1630,39 @@ or higher depending on the task.
 
 ---
 
+## 12.6 Logs Do Not Show Token Usage
+
+If the server log does not show useful token usage, use the response fields instead:
+
+```bash
+curl -s https://example-words-here.trycloudflare.com/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY_HERE" \
+  -d '{
+    "model": "qwen",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Say ready."
+      }
+    ],
+    "max_tokens": 100,
+    "temperature": 0
+  }' | jq '.usage, .timings'
+```
+
+If `.usage` or `.timings` is missing, then that specific server response is not exposing it.
+
+This study log does not add a separate token-logging proxy.
+
+The simplified setup remains:
+
+```text
+Caddy → llama-server
+```
+
+---
+
 # 13. Final Layout
 
 ## 13.1 File Layout
@@ -1608,9 +1722,9 @@ Current setup:
 one protected Vast-hosted local LLM API
 solo coding-agent inference with --parallel 1
 manual key rotation over SSH
-server logs for speed
-API usage for token counts
-API timings for per-request speed and MTP stats
+server logs for debugging
+API usage for token counts when available
+API timings for per-request speed and MTP stats when available
 ```
 
 Direct SSH workflow:
@@ -1629,10 +1743,41 @@ SSH into Vast
 → rotate key manually when needed
 ```
 
+Useful start command:
+
+```bash
+cd /workspace/llama.cpp
+
+export HF_HOME=/workspace/.hf_home
+export LLAMA_CACHE=/workspace/.hf_home
+
+mkdir -p /workspace/logs
+
+nohup ./build/bin/llama-server \
+  -hf unsloth/Qwen3.6-27B-MTP-GGUF:UD-Q4_K_XL \
+  -ngl 99 \
+  -c 40960 \
+  -fa on \
+  --parallel 1 \
+  --cont-batching \
+  --spec-type draft-mtp \
+  --spec-draft-n-max 2 \
+  --host 127.0.0.1 \
+  --port 18000 \
+  --jinja \
+  > /workspace/logs/llama-server.log 2>&1 &
+```
+
 Useful live log command:
 
 ```bash
-tail -f /workspace/logs/llama-server.log | grep -Ei "prompt eval|eval time|tokens per second|tok/s"
+tail -f /workspace/logs/llama-server.log
+```
+
+Useful filtered log command:
+
+```bash
+tail -f /workspace/logs/llama-server.log | grep -Ei "prompt eval|eval time|tokens per second|tok/s|draft|mtp"
 ```
 
 Useful API usage command:
@@ -1685,4 +1830,14 @@ Security note:
 Do not publish the real API key in a blog post.
 Use placeholders like YOUR_API_KEY_HERE.
 Rotate the key if it was accidentally shared.
+```
+
+No token logger is included in this setup.
+
+The runtime path stays simple:
+
+```text
+Vast tunnel
+→ Caddy API key gate
+→ llama-server
 ```

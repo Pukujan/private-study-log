@@ -1,194 +1,701 @@
-# Vast.ai LLM API — Connectivity Incident & Resolution
+# Study Log: Vast.ai LLM API Connectivity, Cloudflare Tunnel, and OpenCode Setup
 
-## Problem
+**Date:** 2026-06-08  
+**Project:** Local Qwen Coding Agent on Vast.ai  
+**Stack:** Vast.ai, llama.cpp, Qwen3.6 27B, Caddy, Cloudflare Tunnel, OpenCode  
+**Goal:** Run a protected OpenAI-compatible LLM API from a Vast.ai GPU instance and connect OpenCode to it.
 
-A llama.cpp inference server (Qwen3-27B) was running on a Vast.ai GPU instance and needed to be accessible externally via a secured API endpoint. Initial curl attempts from a local Mac timed out completely:
+---
 
+## Introduction
+
+Yesterday, I thought I had to manually solve public access by exposing ports, using Caddy, or creating a custom frontend/admin panel.
+
+Then I found that Vast.ai provides its own tunnel tooling inside the instance UI, and I also tested a direct `cloudflared` tunnel from inside the server.
+
+The working setup ended up being:
+
+```text
+OpenCode / Mac / friend machine
+        ↓
+trycloudflare.com public URL
+        ↓
+Cloudflare tunnel
+        ↓
+Caddy API key gate on :18001
+        ↓
+llama.cpp server on :18000
+        ↓
+Qwen3.6 27B
 ```
-curl: (28) Failed to connect to <host> port 18001 after 75003 ms: Couldn't connect to server
+
+The important correction is:
+
+```text
+Do not assume every internal Vast port is externally reachable.
 ```
 
-## Investigation
+Vast instances sit behind NAT. Unless a port was exposed when the instance was created, it may not have an external route. Using a Cloudflare tunnel avoids that problem because the tunnel is outbound from the Vast instance.
 
-### Step 1 — Confirmed Caddy was running
+---
 
-The instance used Caddy as a reverse proxy with bearer token auth, binding to port 18001 internally and forwarding to the llama.cpp server on port 18000. Caddy was running correctly inside the instance.
+## Quick Navigation
 
-### Step 2 — Identified the port mapping issue
-
-Vast.ai uses NAT — internal ports are not directly exposed. Only ports explicitly listed in the **Exposed Ports** field at instance creation time get an external mapping. Port 18001 was never exposed, so it had no external route.
-
-The only externally mapped port was the one Vast auto-assigns for Jupyter, which was bound to Jupyter's own HTTPS server — not to Caddy.
-
-Attempts to remap Caddy to the Jupyter port failed because Jupyter was already exclusively owning that port via HTTPS, causing connection resets on plain HTTP.
-
-### Step 3 — Confirmed the backend was down
-
-Even if connectivity had worked, the llama.cpp server on port 18000 had not been started yet:
-
+```text
+Vast.ai LLM API Setup
+├── 1. Problem
+├── 2. What I First Assumed
+├── 3. What Was Actually Wrong
+├── 4. Final Working Architecture
+├── 5. Start llama.cpp Server
+├── 6. Protect It With Caddy
+├── 7. Expose It With Cloudflare Tunnel
+├── 8. Test the Public API
+├── 9. Connect OpenCode
+├── 10. Token Usage and Timing
+├── 11. Key Rotation
+├── 12. Friend Access
+└── 13. Lessons / Notes
 ```
-curl: (7) Failed to connect to 127.0.0.1 port 18000 after 0 ms: Couldn't connect to server
+
+---
+
+# 1. Problem
+
+I had a `llama.cpp` inference server running on a Vast.ai GPU instance.
+
+The goal was to access it from my Mac and from OpenCode through a protected API endpoint.
+
+The local services were:
+
+```text
+llama-server:
+http://127.0.0.1:18000
+
+Caddy:
+http://127.0.0.1:18001
 ```
 
-The server was started manually and confirmed healthy:
+Caddy was supposed to check the API key and forward valid requests to `llama-server`.
+
+But external curl attempts from my Mac failed:
+
+```text
+curl: (28) Failed to connect to <host> port 18001 after 75003 ms:
+Couldn't connect to server
+```
+
+---
+
+# 2. What I First Assumed
+
+My first assumption was:
+
+```text
+If Caddy listens on :18001,
+then I can call Vast external IP or tunnel on :18001.
+```
+
+That was incomplete.
+
+Inside the Vast instance, this worked:
+
+```bash
+curl http://127.0.0.1:18001/health \
+  -H "Authorization: Bearer $(cat /workspace/api-keys/current.key)"
+```
+
+But from my Mac, the external route did not work.
+
+---
+
+# 3. What Was Actually Wrong
+
+Vast.ai uses NAT.
+
+Internal ports are not automatically exposed to the public internet.
+
+Only ports explicitly exposed or mapped by Vast are externally reachable.
+
+So this was true:
+
+```text
+Caddy was running internally.
+llama-server was running internally.
+But external traffic could not reach :18001 directly.
+```
+
+The Jupyter port was reachable because Vast had mapped it, but that port was already owned by Jupyter’s HTTPS server.
+
+Trying to reuse the Jupyter port for Caddy caused connection problems because Jupyter was already bound to it.
+
+---
+
+# 4. Final Working Architecture
+
+The working solution was to use a Cloudflare tunnel from inside the Vast instance.
+
+```text
+Mac / OpenCode / friend machine
+        │
+        │ HTTPS
+        ▼
+trycloudflare.com
+        │
+        │ outbound tunnel
+        ▼
+cloudflared on Vast instance
+        │
+        ▼
+Caddy :18001
+        │
+        ▼
+llama.cpp server :18000
+```
+
+Diagram:
+
+```mermaid
+flowchart TB
+    A[Mac / OpenCode / Friend] --> B[trycloudflare.com URL]
+    B --> C[cloudflared on Vast]
+    C --> D[Caddy :18001]
+    D --> E[llama-server :18000]
+    E --> F[Qwen3.6 27B GGUF]
+```
+
+The tunnel points to Caddy:
+
+```text
+http://127.0.0.1:18001
+```
+
+not directly to llama-server:
+
+```text
+http://127.0.0.1:18000
+```
+
+---
+
+# 5. Start llama.cpp Server
+
+Start `llama-server` privately on port `18000`:
+
+```bash
+cd /workspace/llama.cpp
+
+export HF_HOME=/workspace/.hf_home
+export LLAMA_CACHE=/workspace/.hf_home
+
+mkdir -p /workspace/logs
+
+nohup ./build/bin/llama-server \
+  -hf unsloth/Qwen3.6-27B-MTP-GGUF:UD-Q4_K_XL \
+  -ngl 99 \
+  -c 40960 \
+  -fa on \
+  --parallel 2 \
+  --cont-batching \
+  --spec-type draft-mtp \
+  --spec-draft-n-max 2 \
+  --host 127.0.0.1 \
+  --port 18000 \
+  --jinja \
+  > /workspace/logs/llama-server.log 2>&1 &
+```
+
+Check if it is running:
+
+```bash
+lsof -i :18000
+```
+
+Expected:
+
+```text
+llama-ser ... TCP localhost:18000 (LISTEN)
+```
+
+Test locally:
+
+```bash
+curl http://127.0.0.1:18000/health
+```
+
+Expected:
 
 ```json
 {"status":"ok"}
 ```
 
-## Solution
+Check logs:
 
-### Cloudflare Tunnel (no instance rebuild required)
+```bash
+tail -n 120 /workspace/logs/llama-server.log
+```
 
-Since adding new exposed ports requires destroying and recreating the instance (losing all state), a Cloudflare Tunnel was used instead. This creates an outbound tunnel from the instance to Cloudflare's edge — no inbound port mapping needed.
+Good signs:
 
-**Install cloudflared on the instance:**
+```text
+llama_server: model loaded
+server is listening on http://127.0.0.1:18000
+update_slots: all slots are idle
+```
+
+---
+
+# 6. Protect It With Caddy
+
+Create an API key:
+
+```bash
+mkdir -p /workspace/api-keys
+
+openssl rand -hex 32 > /workspace/api-keys/current.key
+chmod 600 /workspace/api-keys/current.key
+
+cat /workspace/api-keys/current.key
+```
+
+Create the Caddy folder:
+
+```bash
+mkdir -p /etc/caddy
+```
+
+Create the Caddyfile:
+
+```bash
+cat > /etc/caddy/Caddyfile <<'CADDY'
+{
+    auto_https off
+}
+
+:18001 {
+    @missingAuth not header Authorization "Bearer {env.LOCAL_LLM_API_KEY}"
+
+    respond @missingAuth "Unauthorized" 401
+
+    reverse_proxy 127.0.0.1:18000
+}
+CADDY
+```
+
+Start Caddy:
+
+```bash
+mkdir -p /workspace/logs
+
+export LOCAL_LLM_API_KEY="$(cat /workspace/api-keys/current.key)"
+
+nohup caddy run --config /etc/caddy/Caddyfile \
+  > /workspace/logs/caddy.log 2>&1 &
+```
+
+Test without API key:
+
+```bash
+curl http://127.0.0.1:18001/health
+```
+
+Expected:
+
+```text
+Unauthorized
+```
+
+Test with API key:
+
+```bash
+curl http://127.0.0.1:18001/health \
+  -H "Authorization: Bearer $(cat /workspace/api-keys/current.key)"
+```
+
+Expected:
+
+```json
+{"status":"ok"}
+```
+
+---
+
+# 7. Expose It With Cloudflare Tunnel
+
+Install `cloudflared`:
 
 ```bash
 curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
   -o /usr/local/bin/cloudflared
+
 chmod +x /usr/local/bin/cloudflared
 ```
 
-**Start the tunnel pointing at Caddy:**
+Start a tunnel pointing to Caddy:
 
 ```bash
-cloudflared tunnel --url http://127.0.0.1:18001 &
+cloudflared tunnel --url http://127.0.0.1:18001
 ```
 
-This produces a public `trycloudflare.com` HTTPS URL that routes through Caddy's auth layer.
+This prints a public URL like:
 
-### Multi-key Auth in Caddy
+```text
+https://progress-hook-url-index.trycloudflare.com
+```
 
-The Caddyfile was updated to support multiple bearer tokens — one per user — so individual keys can be revoked without rotating the master key:
+The OpenAI-compatible API base URL becomes:
+
+```text
+https://progress-hook-url-index.trycloudflare.com/v1
+```
+
+Important:
+
+```text
+The trycloudflare.com URL is temporary.
+It changes when cloudflared restarts.
+```
+
+For a stable URL, use a named Cloudflare tunnel later.
+
+---
+
+# 8. Test the Public API
+
+Test health from the Vast server or Mac:
+
+```bash
+curl https://progress-hook-url-index.trycloudflare.com/health \
+  -H "Authorization: Bearer YOUR_API_KEY_HERE"
+```
+
+Expected:
+
+```json
+{"status":"ok"}
+```
+
+Test chat completion:
+
+```bash
+curl https://progress-hook-url-index.trycloudflare.com/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY_HERE" \
+  -d '{
+    "model": "qwen",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Say ready."
+      }
+    ],
+    "max_tokens": 100,
+    "temperature": 0
+  }'
+```
+
+If the response comes back, the full path works:
+
+```text
+Mac
+→ Cloudflare URL
+→ cloudflared
+→ Caddy auth
+→ llama-server
+```
+
+---
+
+# 9. Connect OpenCode
+
+Global config file:
+
+```text
+~/.config/opencode/opencode.jsonc
+```
+
+Create or edit it:
+
+```bash
+mkdir -p ~/.config/opencode
+nano ~/.config/opencode/opencode.jsonc
+```
+
+Working config:
+
+```jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "local-qwen": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Local Qwen via Cloudflare",
+      "options": {
+        "baseURL": "https://progress-hook-url-index.trycloudflare.com/v1"
+      },
+      "models": {
+        "qwen": {
+          "name": "Qwen 27B Local"
+        }
+      }
+    }
+  }
+}
+```
+
+Important mistake:
+
+```text
+Use "provider", not "providers".
+```
+
+Wrong:
+
+```jsonc
+{
+  "providers": {}
+}
+```
+
+Correct:
+
+```jsonc
+{
+  "provider": {}
+}
+```
+
+Register the API key:
+
+```bash
+opencode auth login
+```
+
+Choose:
+
+```text
+Other
+```
+
+Provider ID:
+
+```text
+local-qwen
+```
+
+API key:
+
+```text
+YOUR_API_KEY_HERE
+```
+
+The provider ID must match the config key exactly:
+
+```jsonc
+"local-qwen": {
+```
+
+Restart OpenCode.
+
+Select:
+
+```text
+Local Qwen via Cloudflare / Qwen 27B Local
+```
+
+---
+
+# 10. Token Usage and Timing
+
+The API response includes usage:
+
+```json
+"usage": {
+  "completion_tokens": 100,
+  "prompt_tokens": 13,
+  "total_tokens": 113,
+  "prompt_tokens_details": {
+    "cached_tokens": 9
+  }
+}
+```
+
+Meaning:
+
+```text
+prompt_tokens = input tokens
+completion_tokens = generated tokens
+total_tokens = prompt + completion
+cached_tokens = prompt cache reuse
+```
+
+The API can also include timings:
+
+```json
+"timings": {
+  "prompt_n": 13,
+  "prompt_ms": 501.05,
+  "prompt_per_second": 25.94,
+  "predicted_n": 20,
+  "predicted_ms": 362.591,
+  "predicted_per_second": 55.15,
+  "draft_n": 12,
+  "draft_n_accepted": 12
+}
+```
+
+Meaning:
+
+```text
+prompt_per_second = prompt processing speed
+predicted_per_second = generation speed
+draft_n = MTP draft tokens proposed
+draft_n_accepted = MTP draft tokens accepted
+```
+
+Check usage directly:
+
+```bash
+curl -s https://progress-hook-url-index.trycloudflare.com/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY_HERE" \
+  -d '{
+    "model": "qwen",
+    "messages": [{"role": "user", "content": "Say ready."}],
+    "max_tokens": 100,
+    "temperature": 0
+  }' | jq '.usage'
+```
+
+Check timings:
+
+```bash
+curl -s https://progress-hook-url-index.trycloudflare.com/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY_HERE" \
+  -d '{
+    "model": "qwen",
+    "messages": [{"role": "user", "content": "Say ready."}],
+    "max_tokens": 100,
+    "temperature": 0
+  }' | jq '.timings'
+```
+
+---
+
+# 11. Key Rotation
+
+Rotate the master key:
+
+```bash
+openssl rand -hex 32 > /workspace/api-keys/current.key
+chmod 600 /workspace/api-keys/current.key
+cat /workspace/api-keys/current.key
+```
+
+Caddy does not automatically reload environment variables.
+
+Restart Caddy:
+
+```bash
+pkill caddy
+
+export LOCAL_LLM_API_KEY="$(cat /workspace/api-keys/current.key)"
+
+caddy run --config /etc/caddy/Caddyfile &
+```
+
+Important:
+
+```text
+caddy reload is not enough if Caddy is not running.
+caddy reload also will not magically update environment variables.
+```
+
+If this fails:
+
+```text
+connect: connection refused on localhost:2019
+```
+
+it means the Caddy admin API is not running because the Caddy process is dead.
+
+Use restart instead:
+
+```bash
+pkill caddy
+export LOCAL_LLM_API_KEY="$(cat /workspace/api-keys/current.key)"
+caddy run --config /etc/caddy/Caddyfile &
+```
+
+---
+
+# 12. Multi-Key Friend Access
+
+Caddy can allow multiple bearer tokens.
+
+Example:
 
 ```caddy
 {
     auto_https off
 }
+
 :18001 {
     @missingAuth {
         not header Authorization "Bearer {env.LOCAL_LLM_API_KEY}"
-        not header Authorization "Bearer <friend-key>"
+        not header Authorization "Bearer FRIEND_KEY_HERE"
     }
+
     respond @missingAuth "Unauthorized" 401
+
     reverse_proxy 127.0.0.1:18000
 }
 ```
 
-The master key is loaded from a file via environment variable at Caddy startup:
+Generate a friend key:
 
 ```bash
-export LOCAL_LLM_API_KEY=$(cat /workspace/api-keys/current.key)
-caddy run --config /etc/caddy/Caddyfile &
+openssl rand -hex 32
 ```
 
-### Key Rotation Script
+Add it to the Caddyfile.
 
-A manual rotation script was created to generate a new master key, write it to disk, and restart Caddy with the new value. Saved at `/workspace/rotate-key.sh`:
-
-```bash
-#!/bin/bash
-NEW_KEY=$(openssl rand -hex 32)
-echo $NEW_KEY > /workspace/api-keys/current.key
-
-# Kill existing Caddy — reload won't pick up new env vars
-pkill caddy
-
-# Restart with new key injected into environment
-export LOCAL_LLM_API_KEY=$NEW_KEY
-caddy run --config /etc/caddy/Caddyfile &
-
-echo "Master key rotated: $NEW_KEY"
-```
-
-Make it executable:
-```bash
-chmod +x /workspace/rotate-key.sh
-```
-
-Run it anytime:
-```bash
-/workspace/rotate-key.sh
-```
-
-### Caddy Admin API Dead After Process Exit
-
-`caddy reload` failed with:
-
-```
-Error: sending configuration to instance: performing request:
-Post "http://localhost:2019/load": dial tcp [::1]:2019: connect: connection refused
-```
-
-This happens when the Caddy process has exited — the admin API on port 2019 only exists while Caddy is running. `caddy reload` is not a substitute for restart. Whenever Caddy is not running, always use:
-
-```bash
-pkill caddy  # ensure clean state
-export LOCAL_LLM_API_KEY=$(cat /workspace/api-keys/current.key)
-caddy run --config /etc/caddy/Caddyfile &
-```
-
-### Unexpected Key Rotation Mid-Session
-
-During the heredoc config-writing incident, the rotate script at `/workspace/rotate-key.sh` fired as part of the shell confusion, silently replacing the master key in `/workspace/api-keys/current.key`. Caddy was still running with the old key in memory, so subsequent curl requests returned `Unauthorized` even with what appeared to be the correct key.
-
-Diagnosis: compare the running key against the file:
-
-```bash
-echo $LOCAL_LLM_API_KEY        # what Caddy has in memory
-cat /workspace/api-keys/current.key  # what's on disk
-```
-
-If they differ, the key rotated without Caddy restarting. Fix: restart Caddy to pick up the current key from disk:
+Restart Caddy:
 
 ```bash
 pkill caddy
-export LOCAL_LLM_API_KEY=$(cat /workspace/api-keys/current.key)
+export LOCAL_LLM_API_KEY="$(cat /workspace/api-keys/current.key)"
 caddy run --config /etc/caddy/Caddyfile &
 ```
 
-## Final Architecture
+To revoke a friend:
 
+```text
+Remove their key from the Caddyfile.
+Restart Caddy.
 ```
-Mac / Friend's machine
-        │
-        │ HTTPS
-        ▼
-trycloudflare.com (Cloudflare edge)
-        │
-        │ outbound QUIC tunnel
-        ▼
-cloudflared (on Vast instance)
-        │
-        ▼
-Caddy :18001 (bearer token auth, multi-key)
-        │
-        ▼
-llama.cpp server :18000 (Qwen3-27B, GGUF)
-```
-
-## Caveats
-
-- The `trycloudflare.com` URL is **ephemeral** — it changes on every cloudflared restart. For a stable URL, set up a named tunnel with a Cloudflare account.
-- Caddy must be restarted (not just reloaded) when the master key rotates, since env vars are baked in at process start.
-- Friend keys are hardcoded in the Caddyfile. To revoke one, remove its line and restart Caddy.
 
 ---
 
-## Friend Onboarding
+# 13. Friend OpenCode Setup Script
 
-To give a friend access, send them their key and the following setup script. Replace `<FRIEND_KEY>` with the key you generated for them via `openssl rand -hex 32` and added to the Caddyfile.
+Send friend this script after replacing:
 
-### Setup Script
+```text
+TUNNEL_URL
+FRIEND_KEY
+```
 
-Save this as `setup-opencode.sh` and send it along with their key:
+Script:
 
 ```bash
 #!/bin/bash
-TUNNEL_URL="https://concept-raise-virtually-accessible.trycloudflare.com"
 
-# Write OpenCode provider config
+TUNNEL_URL="https://progress-hook-url-index.trycloudflare.com"
+
+mkdir -p ~/.config/opencode
+
 cat > ~/.config/opencode/opencode.jsonc << EOF
 {
   "\$schema": "https://opencode.ai/config.json",
@@ -211,96 +718,183 @@ EOF
 
 echo "Config written."
 echo ""
-echo "Now run: opencode auth login"
-echo "  → Select 'Other'"
-echo "  → Provider ID: local-qwen"
-echo "  → API Key: <paste the key I gave you>"
+echo "Now run:"
+echo "opencode auth login"
 echo ""
-echo "Then restart OpenCode and select 'Local Qwen via Cloudflare' as your model."
+echo "Choose:"
+echo "Other"
+echo ""
+echo "Provider ID:"
+echo "local-qwen"
+echo ""
+echo "API key:"
+echo "<paste the key I gave you>"
 ```
 
-### Instructions to Send
+Friend instructions:
 
-```
-Hey! Here's how to connect to my Qwen 27B instance via OpenCode:
-
-1. Run the setup script:
-   bash setup-opencode.sh
-
-2. Then run:
-   opencode auth login
-   → Choose "Other"
-   → Provider ID: local-qwen
-   → API Key: <their key>
-
-3. Restart OpenCode — select "Local Qwen via Cloudflare" as the model.
-
-Note: the URL may change if my instance restarts. I'll send a new script if that happens.
+```text
+1. Save the script as setup-opencode.sh
+2. Run: bash setup-opencode.sh
+3. Run: opencode auth login
+4. Choose: Other
+5. Provider ID: local-qwen
+6. Paste the API key
+7. Restart OpenCode
+8. Select Local Qwen via Cloudflare
 ```
 
-### Revoking Access
+---
 
-To revoke a friend's key, remove their `not header Authorization` line from `/etc/caddy/Caddyfile` on the Vast instance, then restart Caddy:
+# 14. Troubleshooting
+
+## 14.1 curl times out from Mac
+
+If this happens:
+
+```text
+curl: (28) Failed to connect to host port 18001
+```
+
+Cause:
+
+```text
+Vast did not expose that internal port externally.
+```
+
+Fix:
+
+```text
+Use cloudflared tunnel --url http://127.0.0.1:18001
+```
+
+---
+
+## 14.2 llama-server is down
+
+Check:
 
 ```bash
-pkill caddy
-export LOCAL_LLM_API_KEY=$(cat /workspace/api-keys/current.key)
+curl http://127.0.0.1:18000/health
+```
+
+If it fails, start `llama-server`.
+
+---
+
+## 14.3 Caddy is down
+
+Check:
+
+```bash
+curl http://127.0.0.1:18001/health
+```
+
+Expected without key:
+
+```text
+Unauthorized
+```
+
+If it cannot connect, Caddy is not running.
+
+Start it:
+
+```bash
+export LOCAL_LLM_API_KEY="$(cat /workspace/api-keys/current.key)"
+
 caddy run --config /etc/caddy/Caddyfile &
 ```
 
 ---
 
-## Part 2 — Connecting OpenCode
+## 14.4 API key on disk does not match Caddy memory
 
-### Goal
-
-Point OpenCode at the Cloudflare tunnel as a custom OpenAI-compatible provider.
-
-### Issues Encountered
-
-**Wrong config key** — the config used `"providers"` (plural) but OpenCode expects `"provider"` (singular). This caused a startup crash:
-
-```
-Error: 4 of 5 requests failed: Unexpected server error.
-Affected startup requests: config.providers, provider.list, app.agents, config.get
-```
-
-**API key can't be hardcoded in config** — OpenCode requires credentials to be registered via `opencode auth login`, not inlined in the JSON. The key in `options.apiKey` is ignored by the running process.
-
-**Heredoc pasted as literal text** — attempting to write the config via `cat > file << 'EOF'` in a terminal that was also running other processes caused the shell commands to be written into the file verbatim instead of executed. Always verify with `cat` after writing.
-
-### Working Config
-
-`~/.config/opencode/opencode.jsonc`:
-
-```jsonc
-{
-  "$schema": "https://opencode.ai/config.json",
-  "provider": {
-    "local-qwen": {
-      "npm": "@ai-sdk/openai-compatible",
-      "name": "Local Qwen via Cloudflare",
-      "options": {
-        "baseURL": "https://<your-tunnel>.trycloudflare.com/v1"
-      },
-      "models": {
-        "qwen": {
-          "name": "Qwen 27B Local"
-        }
-      }
-    }
-  }
-}
-```
-
-### Registering the API Key
+Check disk key:
 
 ```bash
-opencode auth login
+cat /workspace/api-keys/current.key
 ```
 
-Select **Other**, enter `local-qwen` as the provider ID (must match the key in config exactly), then paste the bearer token. OpenCode stores it as a credential linked to that provider ID.
+Check current shell env:
 
-### Restart OpenCode
+```bash
+echo $LOCAL_LLM_API_KEY
+```
 
-After saving the config and registering the key, restart OpenCode. The provider appears in the model selector as "Local Qwen via Cloudflare".
+If they differ, restart Caddy:
+
+```bash
+pkill caddy
+export LOCAL_LLM_API_KEY="$(cat /workspace/api-keys/current.key)"
+caddy run --config /etc/caddy/Caddyfile &
+```
+
+---
+
+## 14.5 OpenCode crashes or cannot connect
+
+Check config path:
+
+```bash
+cat ~/.config/opencode/opencode.jsonc
+```
+
+Check these:
+
+```text
+"provider" must be singular.
+Provider ID must be local-qwen.
+baseURL must end with /v1.
+API key must be registered through opencode auth login.
+```
+
+Test API outside OpenCode:
+
+```bash
+curl https://progress-hook-url-index.trycloudflare.com/health \
+  -H "Authorization: Bearer YOUR_API_KEY_HERE"
+```
+
+If curl works but OpenCode fails, the problem is OpenCode config/auth.
+
+---
+
+# 15. Final Notes
+
+The corrected final setup is:
+
+```text
+llama-server private on :18000
+Caddy protected on :18001
+cloudflared exposes Caddy
+OpenCode connects to Cloudflare URL
+OpenCode auth key registered through opencode auth login
+```
+
+The biggest correction from the first attempt:
+
+```text
+Do not rely on arbitrary Vast internal ports being externally reachable.
+```
+
+The working external access method:
+
+```bash
+cloudflared tunnel --url http://127.0.0.1:18001
+```
+
+Main rule:
+
+```text
+Tunnel to Caddy.
+Do not tunnel directly to llama-server.
+```
+
+Security note:
+
+```text
+Do not publish real API keys.
+Use placeholders in public logs.
+Rotate keys if they are pasted into chats, screenshots, or shared docs.
+```

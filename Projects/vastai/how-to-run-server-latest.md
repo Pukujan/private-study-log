@@ -48,15 +48,16 @@ llama-server on localhost
 1. Goal
 2. Install and Build llama.cpp
 3. Start the Local Model Server
-4. Create an API Key
-5. Configure Caddy as the Protected API Gateway
-6. Create a Vast.ai Tunnel
-7. Find the API Base URL
-8. Test the Protected API
-9. Configure OpenCode
-10. Rotate the API Key Over SSH
-11. Final Working Layout
-12. Notes
+4. Batching and Parallel Slot Settings
+5. Create an API Key
+6. Configure Caddy as the Protected API Gateway
+7. Create a Vast.ai Tunnel
+8. Find the API Base URL
+9. Test the Protected API
+10. Configure OpenCode
+11. Rotate the API Key Over SSH
+12. Final Working Layout
+13. Notes
 
 ---
 
@@ -93,7 +94,7 @@ Not this:
 
 ```text
 Vast tunnel target:
-http://localhost:1111
+http://localhost:18000
 ```
 
 The raw model server should stay behind Caddy.
@@ -133,7 +134,9 @@ cmake --build build --config Release -j --target llama-server llama-cli
 
 ## 3. Start the Local Model Server
 
-Start the model server on a private local port:
+Start the model server on a private local port.
+
+For the first working version, I used one parallel slot:
 
 ```bash
 cd /workspace/llama.cpp
@@ -180,7 +183,107 @@ Expected:
 
 ---
 
-## 4. Create an API Key
+## 4. Batching and Parallel Slot Settings
+
+The first version is a **single-user protected API**.
+
+This setting:
+
+```bash
+-np 1
+-c 40960
+```
+
+means:
+
+```text
+1 parallel slot
+about 40k context for one active request
+```
+
+That is better for:
+
+```text
+solo OpenCode use
+one coding agent at a time
+longer single request context
+lower VRAM pressure
+```
+
+It is not really a batched multi-user setup yet.
+
+For shared use or batched inference, I would need to change the loading command.
+
+Example two-slot version:
+
+```bash
+cd /workspace/llama.cpp
+
+export HF_HOME=/workspace/.hf_home
+export LLAMA_CACHE=/workspace/.hf_home
+
+./build/bin/llama-server \
+  -hf unsloth/Qwen3.6-27B-MTP-GGUF:UD-Q4_K_XL \
+  -ngl 99 \
+  -c 40960 \
+  -fa on \
+  -np 2 \
+  --parallel 2 \
+  --cont-batching \
+  --spec-type draft-mtp \
+  --spec-draft-n-max 2 \
+  --host 127.0.0.1 \
+  --port 18000 \
+  --jinja
+```
+
+The practical meaning:
+
+```text
+-np 1 = one active slot
+-np 2 = two parallel slots
+--cont-batching = continuous batching for queued/parallel requests
+-c 40960 = total context setting used by the server
+```
+
+On a 24GB RTX 3090, this can get tight.
+
+For solo coding, I would start with:
+
+```bash
+-np 1
+-c 40960
+```
+
+For light shared testing, I would try:
+
+```bash
+-np 2
+-c 40960
+--cont-batching
+```
+
+But I would expect less comfortable long-context behavior once multiple people use it.
+
+A simple way to describe the tradeoff:
+
+```text
+More context = better for one long coding session
+More parallel slots = better for shared API use
+More of both = more VRAM pressure
+```
+
+For this study log, the default working setup is still:
+
+```text
+protected single-user API
+```
+
+not a full shared batching server.
+
+---
+
+## 5. Create an API Key
 
 Create a folder for API keys:
 
@@ -211,7 +314,7 @@ Authorization: Bearer <your-api-key>
 
 ---
 
-## 5. Configure Caddy as the Protected API Gateway
+## 6. Configure Caddy as the Protected API Gateway
 
 Install Caddy if needed:
 
@@ -283,7 +386,7 @@ supervisorctl status
 
 ---
 
-## 6. Create a Vast.ai Tunnel
+## 7. Create a Vast.ai Tunnel
 
 Open the Vast.ai instance portal.
 
@@ -329,7 +432,7 @@ Caddy then checks the API key before forwarding the request to `llama-server`.
 
 ---
 
-## 7. Find the API Base URL
+## 8. Find the API Base URL
 
 The tunnel URL is the public API host.
 
@@ -365,7 +468,7 @@ https://example-words-here.trycloudflare.com/health
 
 ---
 
-## 8. Test the Protected API
+## 9. Test the Protected API
 
 First test without an API key:
 
@@ -422,7 +525,7 @@ If the server responds, the protected API is working.
 
 ---
 
-## 9. Configure OpenCode
+## 10. Configure OpenCode
 
 In OpenCode, use an OpenAI-compatible provider.
 
@@ -476,7 +579,7 @@ https://example-words-here.trycloudflare.com pointing to localhost:18001
 
 ---
 
-## 10. Rotate the API Key Over SSH
+## 11. Rotate the API Key Over SSH
 
 For now, the simplest rotation flow is direct SSH.
 
@@ -517,7 +620,7 @@ Then update OpenCode with the new API key.
 
 ---
 
-## 11. Final Working Layout
+## 12. Final Working Layout
 
 File layout:
 
@@ -561,9 +664,41 @@ OpenCode base URL:
 https://your-tunnel-url.trycloudflare.com/v1
 ```
 
+Default model loading mode:
+
+```text
+-np 1
+-c 40960
+```
+
+Meaning:
+
+```text
+single-user protected API
+about 40k context
+one active coding agent
+```
+
+Experimental shared mode:
+
+```text
+-np 2
+-c 40960
+--cont-batching
+```
+
+Meaning:
+
+```text
+two parallel slots
+shared API testing
+more VRAM pressure
+less comfortable long-context use
+```
+
 ---
 
-## 12. Notes
+## 13. Notes
 
 The key difference is this:
 
@@ -603,6 +738,21 @@ SSH into Vast
 → update OpenCode
 ```
 
-Later, the same rotation command can be moved into a small admin service if I want a button-based panel.
+For batching, this setup needs to be decided at model load time.
+
+The current default is:
+
+```text
+single-user coding API
+```
+
+If I want to share the endpoint with friends, I need to test:
+
+```text
+-np 2
+--cont-batching
+```
+
+and watch VRAM, latency, prompt processing speed, and context failures.
 
 For this version, one protected API from the Vast server is enough.

@@ -1,28 +1,38 @@
-# Study Log: Running a Local LLM Behind Caddy With API Key Protection
+# Study Log: Creating a Local LLM API on Vast.ai With Built-In Tunnels
 
 **Date:** 2026-06-07  
 **Project:** Local LLM Coding Server on Vast.ai  
-**Stack:** llama.cpp, Qwen3.6 27B, Caddy, OpenCode  
-**Goal:** Run a local OpenAI-compatible LLM server, protect it with an API key, and connect it to OpenCode.
+**Stack:** llama.cpp, Qwen3.6 27B, Vast.ai Tunnels, OpenCode  
+**Goal:** Run a local OpenAI-compatible LLM server, expose it through a Vast.ai tunnel, and connect it to OpenCode.
 
 ---
 
 ## Introduction
 
-I wanted to run a local coding model on a rented GPU and use it through OpenCode without leaving the model endpoint completely open.
+I originally thought I needed to manually expose my local LLM server with Caddy, Cloudflare Tunnel, or SSH port forwarding.
 
-The model server itself, `llama-server`, exposes an OpenAI-compatible API, but it does not enforce a serious API key by default. OpenCode may ask for an API key, but the local server usually accepts anything unless another layer checks it.
+Then I noticed Vast.ai already has a **Tunnels / Open New Ports** page inside the instance portal.
 
-So the setup became:
+That means the API creation flow is much simpler:
 
 ```mermaid
 flowchart TB
-    A[OpenCode] --> B[Caddy API Key Gate]
+    A[OpenCode] --> B[Vast.ai Tunnel URL]
     B --> C[llama.cpp server]
     C --> D[Qwen3.6 27B GGUF]
 ```
 
-Caddy sits in front of the model server. OpenCode talks to Caddy. Caddy checks the `Authorization` header. If the key is valid, the request is forwarded to `llama-server`.
+The model server still runs locally inside the Vast instance.  
+The Vast tunnel gives that local server a public URL.
+
+So instead of manually configuring Cloudflare Tunnel, the flow becomes:
+
+```text
+localhost model server
+→ Vast.ai tunnel
+→ public trycloudflare.com URL
+→ OpenCode / app / coding agent
+```
 
 ---
 
@@ -30,28 +40,33 @@ Caddy sits in front of the model server. OpenCode talks to Caddy. Caddy checks t
 
 1. Goal
 2. Install and Run Qwen 27B
-3. Why Caddy Is Needed
-4. Create an API Key
-5. Configure Caddy as an API Key Proxy
-6. Run Caddy With the Injected Key
-7. Rotate the API Key
-8. Configure OpenCode
+3. Start the OpenAI-Compatible API Server
+4. Create a Vast.ai Tunnel
+5. Find the API Base URL
+6. Test the API
+7. Configure OpenCode
+8. Optional API Key Protection
 9. Final Working Layout
-10. Lessons Learned
+10. Notes
 
 ---
 
 ## 1. Goal
 
-The goal was not to create a production authentication system.
+The goal was to create a usable local model API from a rented Vast.ai GPU.
 
-The goal was a simple protection layer for a rented Vast.ai machine:
+The API needed to work with tools that expect an OpenAI-compatible endpoint, like:
 
 ```text
-OpenCode → Caddy protected endpoint → local llama.cpp server
+/v1/chat/completions
+/v1/models
 ```
 
-This prevents casual access to the public model port and lets OpenCode use a normal OpenAI-style API key.
+The simple target layout became:
+
+```text
+OpenCode → Vast.ai Tunnel URL → llama.cpp server → Qwen model
+```
 
 ---
 
@@ -84,7 +99,11 @@ cmake -B build \
 cmake --build build --config Release -j --target llama-server llama-cli
 ```
 
-Start Qwen3.6 27B with around 40k context:
+---
+
+## 3. Start the OpenAI-Compatible API Server
+
+Start the model server:
 
 ```bash
 cd /workspace/llama.cpp
@@ -100,23 +119,27 @@ export LLAMA_CACHE=/workspace/.hf_home
   -np 1 \
   --spec-type draft-mtp \
   --spec-draft-n-max 2 \
-  --host 127.0.0.1 \
-  --port 18000 \
+  --host 0.0.0.0 \
+  --port 1111 \
   --jinja
 ```
 
 Important detail:
 
 ```text
-Use --host 127.0.0.1 for llama-server if Caddy is the public-facing proxy.
+Use --host 0.0.0.0 if the Vast.ai tunnel needs to reach the server port.
 ```
 
-That way, the model server itself is not exposed directly.
+The server is now running on:
+
+```text
+http://localhost:1111
+```
 
 Test locally:
 
 ```bash
-curl http://127.0.0.1:18000/health
+curl http://localhost:1111/health
 ```
 
 Expected:
@@ -127,151 +150,84 @@ Expected:
 
 ---
 
-## 3. Why Caddy Is Needed
+## 4. Create a Vast.ai Tunnel
 
-`llama-server` gives an OpenAI-compatible endpoint:
+Open the Vast.ai instance portal.
+
+Go to:
 
 ```text
-/v1/chat/completions
-/v1/models
-/health
+Tunnels / Open New Ports
 ```
 
-But by itself, it is not a real authenticated public endpoint.
-
-OpenCode can send an API key, but the backend has to enforce it.
-
-So Caddy becomes the gatekeeper:
+In the target URL field, enter the local server URL:
 
 ```text
-Request has correct Authorization header
-→ forward to llama-server
+http://localhost:1111
+```
 
-Request is missing or wrong key
-→ return 401 Unauthorized
+Click:
+
+```text
+Create New Tunnel
+```
+
+Vast.ai will create a public tunnel URL that looks like:
+
+```text
+https://example-words-here.trycloudflare.com
+```
+
+Example from the portal:
+
+```text
+Target URL:
+http://localhost:1111
+
+Tunnel URL:
+https://en-gay-wins-told.trycloudflare.com
+```
+
+That tunnel URL now points to the local model server.
+
+---
+
+## 5. Find the API Base URL
+
+The tunnel URL is the public API host.
+
+If the tunnel is:
+
+```text
+https://en-gay-wins-told.trycloudflare.com
+```
+
+Then the OpenAI-compatible base URL is:
+
+```text
+https://en-gay-wins-told.trycloudflare.com/v1
+```
+
+The chat completions endpoint is:
+
+```text
+https://en-gay-wins-told.trycloudflare.com/v1/chat/completions
+```
+
+The models endpoint is:
+
+```text
+https://en-gay-wins-told.trycloudflare.com/v1/models
 ```
 
 ---
 
-## 4. Create an API Key
+## 6. Test the API
 
-Create a folder for local API keys:
-
-```bash
-mkdir -p /workspace/api-keys
-```
-
-Generate a key:
+Test health through the tunnel:
 
 ```bash
-openssl rand -hex 32 > /workspace/api-keys/current.key
-chmod 600 /workspace/api-keys/current.key
-```
-
-Print the key:
-
-```bash
-cat /workspace/api-keys/current.key
-```
-
-Example format:
-
-```text
-4fd7c3b4e5d6...
-```
-
-In OpenCode, this will be used as the API key.
-
----
-
-## 5. Configure Caddy as an API Key Proxy
-
-Install Caddy if it is not installed:
-
-```bash
-apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
-
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
-  | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
-  | tee /etc/apt/sources.list.d/caddy-stable.list
-
-apt update
-apt install -y caddy
-```
-
-Create a Caddyfile:
-
-```bash
-cat > /etc/caddy/Caddyfile <<'CADDY'
-{
-    auto_https off
-}
-
-:18001 {
-    @missingAuth not header Authorization "Bearer {env.LOCAL_LLM_API_KEY}"
-
-    respond @missingAuth "Unauthorized" 401
-
-    reverse_proxy 127.0.0.1:18000
-}
-CADDY
-```
-
-This means:
-
-```text
-Public endpoint: :18001
-Private llama.cpp endpoint: 127.0.0.1:18000
-Required header: Authorization: Bearer <key>
-```
-
----
-
-## 6. Run Caddy With the Injected Key
-
-Inject the key through an environment variable:
-
-```bash
-export LOCAL_LLM_API_KEY="$(cat /workspace/api-keys/current.key)"
-```
-
-Run Caddy:
-
-```bash
-caddy run --config /etc/caddy/Caddyfile
-```
-
-Now Caddy is listening on:
-
-```text
-http://YOUR_VAST_IP:18001
-```
-
-The model server remains private on:
-
-```text
-http://127.0.0.1:18000
-```
-
-Test unauthorized access:
-
-```bash
-curl http://127.0.0.1:18001/health
-```
-
-Expected:
-
-```text
-Unauthorized
-```
-
-Test authorized access:
-
-```bash
-curl http://127.0.0.1:18001/health \
-  -H "Authorization: Bearer $(cat /workspace/api-keys/current.key)"
+curl https://en-gay-wins-told.trycloudflare.com/health
 ```
 
 Expected:
@@ -280,12 +236,17 @@ Expected:
 {"status":"ok"}
 ```
 
-Test chat through Caddy:
+Test models:
 
 ```bash
-curl http://127.0.0.1:18001/v1/chat/completions \
+curl https://en-gay-wins-told.trycloudflare.com/v1/models
+```
+
+Test chat completion:
+
+```bash
+curl https://en-gay-wins-told.trycloudflare.com/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $(cat /workspace/api-keys/current.key)" \
   -d '{
     "model": "qwen",
     "messages": [
@@ -299,167 +260,164 @@ curl http://127.0.0.1:18001/v1/chat/completions \
   }'
 ```
 
----
-
-## 7. Rotate the API Key
-
-Create a rotation script:
-
-```bash
-cat > /workspace/rotate_caddy_key.sh <<'SH'
-#!/usr/bin/env bash
-set -euo pipefail
-
-KEY_FILE="/workspace/api-keys/current.key"
-
-openssl rand -hex 32 > "$KEY_FILE"
-chmod 600 "$KEY_FILE"
-
-echo "New API key:"
-cat "$KEY_FILE"
-
-echo
-echo "Restart Caddy with:"
-echo 'export LOCAL_LLM_API_KEY="$(cat /workspace/api-keys/current.key)"'
-echo "caddy run --config /etc/caddy/Caddyfile"
-SH
-
-chmod +x /workspace/rotate_caddy_key.sh
-```
-
-Run:
-
-```bash
-/workspace/rotate_caddy_key.sh
-```
-
-Important lesson:
-
-```text
-Caddy only sees environment variables from the process that starts it.
-```
-
-So if Caddy is running from a terminal, rotating the file alone is not enough. The Caddy process must be restarted or reloaded with the new environment variable.
-
-The simple flow is:
-
-```bash
-/workspace/rotate_caddy_key.sh
-
-export LOCAL_LLM_API_KEY="$(cat /workspace/api-keys/current.key)"
-caddy run --config /etc/caddy/Caddyfile
-```
-
-For a disposable Vast.ai coding box, restarting Caddy is simple enough.
+If the server responds, the API is working.
 
 ---
 
-## 8. Configure OpenCode
+## 7. Configure OpenCode
 
-OpenCode should point to the Caddy endpoint, not directly to llama.cpp.
+In OpenCode, use an OpenAI-compatible provider.
 
 Use:
 
 ```text
-Base URL:
-http://YOUR_VAST_IP:18001/v1
+Provider:
+OpenAI-compatible
 ```
 
-Use the model name:
+Base URL:
+
+```text
+https://en-gay-wins-told.trycloudflare.com/v1
+```
+
+Model:
 
 ```text
 qwen
 ```
 
-Use API key:
+API key:
 
 ```text
-contents of /workspace/api-keys/current.key
+anything
 ```
 
-Example:
+Important detail:
+
+```text
+llama-server may not enforce the API key by default.
+```
+
+So OpenCode can require an API key field, but the backend may accept any value unless another auth layer is added.
+
+Example OpenCode config:
 
 ```text
 Provider: OpenAI-compatible
-Base URL: http://YOUR_VAST_IP:18001/v1
+Base URL: https://en-gay-wins-told.trycloudflare.com/v1
 Model: qwen
-API Key: <current.key value>
+API Key: local
 ```
 
-Do not point OpenCode to this:
+---
+
+## 8. Optional API Key Protection
+
+The Vast.ai tunnel makes exposing the API easy, but it does not automatically make the API private.
+
+If the tunnel URL is shared, anyone with the URL may be able to send requests to the model server.
+
+For private solo testing, this may be acceptable for a short session.
+
+For anything shared with friends or used longer term, add an auth layer.
+
+The safer layout would be:
+
+```mermaid
+flowchart TB
+    A[OpenCode] --> B[Vast.ai Tunnel URL]
+    B --> C[Caddy API Key Gate]
+    C --> D[llama.cpp server]
+    D --> E[Qwen3.6 27B GGUF]
+```
+
+In that version:
 
 ```text
-http://YOUR_VAST_IP:18000/v1
+Vast tunnel target:
+http://localhost:18001
+
+Caddy listens on:
+localhost:18001
+
+llama-server listens on:
+localhost:18000
 ```
 
-That would bypass Caddy.
-
-Use this instead:
+Then Caddy checks:
 
 ```text
-http://YOUR_VAST_IP:18001/v1
+Authorization: Bearer <your-api-key>
 ```
+
+Before forwarding the request to llama.cpp.
+
+For the simplest tunnel-only setup, this Caddy layer can be skipped.
+
+For a protected API, keep Caddy.
 
 ---
 
 ## 9. Final Working Layout
 
-The final layout:
-
-```text
-/workspace
-├── .hf_home/
-│   └── Hugging Face model cache
-├── llama.cpp/
-│   └── build/bin/llama-server
-├── api-keys/
-│   └── current.key
-└── rotate_caddy_key.sh
-```
-
-The runtime layout:
+Simple version:
 
 ```mermaid
 flowchart TB
-    A[OpenCode] -->|Authorization: Bearer key| B[Vast Public IP :18001]
-    B --> C[Caddy checks key]
-    C --> D[127.0.0.1:18000 llama-server]
-    D --> E[Qwen3.6 27B MTP GGUF]
+    A[OpenCode] --> B[trycloudflare.com Vast Tunnel]
+    B --> C[localhost:1111 llama-server]
+    C --> D[Qwen3.6 27B GGUF]
 ```
 
-Ports:
+Runtime:
 
 ```text
-18000 = llama.cpp local/private server
-18001 = Caddy protected public endpoint
+llama.cpp server:
+http://localhost:1111
+
+Vast.ai tunnel target:
+http://localhost:1111
+
+Public API base URL:
+https://your-tunnel-url.trycloudflare.com/v1
 ```
+
+OpenCode points to:
+
+```text
+https://your-tunnel-url.trycloudflare.com/v1
+```
+
+Not directly to the Vast IP.
 
 ---
 
-## 10. Lessons Learned
+## 10. Notes
 
-The important design lesson is that the model server and the public API endpoint should not be the same thing.
+The main discovery was that Vast.ai already provides a built-in tunnel system.
 
-`llama-server` is good at serving the model.
+That means I do not need to manually set up Cloudflare Tunnel just to expose the local model API.
 
-Caddy is good at controlling access.
-
-OpenCode only needs an OpenAI-compatible endpoint, so the clean setup is:
+The fastest working setup is:
 
 ```text
-OpenCode → Caddy → llama.cpp
+llama-server
+→ localhost port
+→ Vast.ai tunnel
+→ OpenAI-compatible API URL
+→ OpenCode
 ```
 
-The API key is not complicated. It is just a shared secret checked by Caddy before the request reaches the model.
-
-For my local coding setup, this is enough:
+The protected setup is:
 
 ```text
-Qwen3.6 27B
-40k context
-llama.cpp
-Caddy API key gate
-OpenCode
+llama-server
+→ Caddy API key gate
+→ Vast.ai tunnel
+→ OpenCode
 ```
 
-This keeps the system simple, cheap, and good enough for a rented GPU coding workflow.
+For a disposable coding server, the built-in Vast tunnel is the simplest way to create an API.
+
+For anything shared or long-running, Caddy still makes sense as the API key protection layer.

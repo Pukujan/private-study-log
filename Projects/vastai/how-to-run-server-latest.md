@@ -3,7 +3,7 @@
 **Date:** 2026-06-07  
 **Project:** Local LLM Coding Server on Vast.ai  
 **Stack:** llama.cpp, Qwen3.6 27B, Caddy, Vast.ai Tunnels, OpenCode  
-**Goal:** Run a local OpenAI-compatible LLM server, protect it with an API key, expose it through a Vast.ai tunnel, and connect it to OpenCode.
+**Goal:** Run a local OpenAI-compatible LLM server, protect it with an API key, expose it through a Vast.ai tunnel, log token usage, and connect it to OpenCode.
 
 ---
 
@@ -47,17 +47,18 @@ llama-server on localhost
 
 1. Goal
 2. Install and Build llama.cpp
-3. Start the Local Model Server
+3. Start the Local Model Server With Logs
 4. Batching and Parallel Slot Settings
 5. Create an API Key
 6. Configure Caddy as the Protected API Gateway
 7. Create a Vast.ai Tunnel
 8. Find the API Base URL
 9. Test the Protected API
-10. Configure OpenCode
-11. Rotate the API Key Over SSH
-12. Final Working Layout
-13. Notes
+10. Log Token Usage From the API
+11. Configure OpenCode
+12. Rotate the API Key Over SSH
+13. Final Working Layout
+14. Notes
 
 ---
 
@@ -112,7 +113,7 @@ export HF_HOME=/workspace/.hf_home
 export LLAMA_CACHE=/workspace/.hf_home
 
 apt update
-apt install -y git cmake build-essential curl python3-pip
+apt install -y git cmake build-essential curl python3-pip jq
 ```
 
 Clone and build `llama.cpp`:
@@ -132,11 +133,11 @@ cmake --build build --config Release -j --target llama-server llama-cli
 
 ---
 
-## 3. Start the Local Model Server
+## 3. Start the Local Model Server With Logs
 
 Start the model server on a private local port.
 
-For the first working version, I used one parallel slot:
+For the current working version, I used two parallel slots with continuous batching:
 
 ```bash
 cd /workspace/llama.cpp
@@ -144,17 +145,21 @@ cd /workspace/llama.cpp
 export HF_HOME=/workspace/.hf_home
 export LLAMA_CACHE=/workspace/.hf_home
 
+mkdir -p /workspace/logs
+
 ./build/bin/llama-server \
   -hf unsloth/Qwen3.6-27B-MTP-GGUF:UD-Q4_K_XL \
   -ngl 99 \
   -c 40960 \
   -fa on \
-  -np 1 \
+  --parallel 2 \
+  --cont-batching \
   --spec-type draft-mtp \
   --spec-draft-n-max 2 \
   --host 127.0.0.1 \
   --port 18000 \
-  --jinja
+  --jinja \
+  2>&1 | tee -a /workspace/logs/llama-server.log
 ```
 
 Important detail:
@@ -167,6 +172,24 @@ The model server is now running on:
 
 ```text
 http://127.0.0.1:18000
+```
+
+The log file is saved here:
+
+```text
+/workspace/logs/llama-server.log
+```
+
+This is useful for checking:
+
+```text
+server startup errors
+model loading status
+prompt processing speed
+generation speed
+request timing
+context/KV cache warnings
+batching behavior
 ```
 
 Test locally:
@@ -183,22 +206,131 @@ Expected:
 
 ---
 
+### Run llama-server in the Background
+
+If I want to keep the server running after closing the SSH session, I can use `nohup`:
+
+```bash
+cd /workspace/llama.cpp
+
+export HF_HOME=/workspace/.hf_home
+export LLAMA_CACHE=/workspace/.hf_home
+
+mkdir -p /workspace/logs
+
+nohup ./build/bin/llama-server \
+  -hf unsloth/Qwen3.6-27B-MTP-GGUF:UD-Q4_K_XL \
+  -ngl 99 \
+  -c 40960 \
+  -fa on \
+  --parallel 2 \
+  --cont-batching \
+  --spec-type draft-mtp \
+  --spec-draft-n-max 2 \
+  --host 127.0.0.1 \
+  --port 18000 \
+  --jinja \
+  > /workspace/logs/llama-server.log 2>&1 &
+```
+
+Check that it is running:
+
+```bash
+ps aux | grep llama-server
+```
+
+Watch logs live:
+
+```bash
+tail -f /workspace/logs/llama-server.log
+```
+
+Stop it manually:
+
+```bash
+pkill llama-server
+```
+
+---
+
+### Check Prompt Processing From Logs
+
+After sending a request, watch the log:
+
+```bash
+tail -f /workspace/logs/llama-server.log
+```
+
+The useful lines are usually related to:
+
+```text
+prompt eval time
+prompt eval tokens
+eval time
+tokens per second
+```
+
+The exact wording can vary by llama.cpp version, but the useful numbers are usually:
+
+```text
+prompt eval tokens = prompt/input tokens processed
+prompt eval time = time spent processing the prompt
+prompt eval speed = prompt processing tokens per second
+eval tokens = generated tokens
+eval time = time spent generating output
+eval speed = generation tokens per second
+```
+
+The API response gives token counts through `usage`.
+
+The server log gives timing and throughput.
+
+So the two sources work together:
+
+```text
+API response usage
+= prompt_tokens, completion_tokens, total_tokens
+
+llama-server log
+= prompt processing speed, generation speed, request timing
+```
+
+---
+
 ## 4. Batching and Parallel Slot Settings
 
-The first version is a **single-user protected API**.
+The current version is a **light shared protected API**, not a serious multi-user production server.
 
 This setting:
+
+```bash
+--parallel 2
+-c 40960
+--cont-batching
+```
+
+means:
+
+```text
+2 parallel slots
+about 40k context setting
+continuous batching enabled
+better for light shared API use
+more VRAM pressure than solo mode
+```
+
+For solo coding, the simpler version would be:
 
 ```bash
 -np 1
 -c 40960
 ```
 
-means:
+or:
 
-```text
-1 parallel slot
-about 40k context for one active request
+```bash
+--parallel 1
+-c 40960
 ```
 
 That is better for:
@@ -210,24 +342,14 @@ longer single request context
 lower VRAM pressure
 ```
 
-It is not really a batched multi-user setup yet.
-
-For shared use or batched inference, I would need to change the loading command.
-
-Example two-slot version:
+For shared use or batched inference, the current two-slot command is:
 
 ```bash
-cd /workspace/llama.cpp
-
-export HF_HOME=/workspace/.hf_home
-export LLAMA_CACHE=/workspace/.hf_home
-
 ./build/bin/llama-server \
   -hf unsloth/Qwen3.6-27B-MTP-GGUF:UD-Q4_K_XL \
   -ngl 99 \
   -c 40960 \
   -fa on \
-  -np 2 \
   --parallel 2 \
   --cont-batching \
   --spec-type draft-mtp \
@@ -240,30 +362,28 @@ export LLAMA_CACHE=/workspace/.hf_home
 The practical meaning:
 
 ```text
--np 1 = one active slot
--np 2 = two parallel slots
+--parallel 1 = one active slot
+--parallel 2 = two parallel slots
 --cont-batching = continuous batching for queued/parallel requests
--c 40960 = total context setting used by the server
+-c 40960 = context setting used by the server
 ```
 
-On a 24GB RTX 3090, this can get tight.
-
-For solo coding, I would start with:
-
-```bash
--np 1
--c 40960
-```
-
-For light shared testing, I would try:
+Do not use both of these together unless llama.cpp explicitly expects it:
 
 ```bash
 -np 2
--c 40960
---cont-batching
+--parallel 2
 ```
 
-But I would expect less comfortable long-context behavior once multiple people use it.
+Use one style.
+
+For this study log, I am using:
+
+```bash
+--parallel 2
+```
+
+On a 24GB RTX 3090, this can get tight.
 
 A simple way to describe the tradeoff:
 
@@ -273,13 +393,17 @@ More parallel slots = better for shared API use
 More of both = more VRAM pressure
 ```
 
-For this study log, the default working setup is still:
+So this setup is:
 
 ```text
-protected single-user API
+protected API with light parallel/shared inference
 ```
 
-not a full shared batching server.
+not:
+
+```text
+large multi-user production inference server
+```
 
 ---
 
@@ -304,13 +428,15 @@ Print the key:
 cat /workspace/api-keys/current.key
 ```
 
-This key will be used by OpenCode.
+This key will be used by OpenCode and other local agents.
 
 The request header should look like:
 
 ```text
 Authorization: Bearer <your-api-key>
 ```
+
+Anyone with the tunnel URL and this API key can use the model server, so the key should be treated like a password.
 
 ---
 
@@ -525,7 +651,304 @@ If the server responds, the protected API is working.
 
 ---
 
-## 10. Configure OpenCode
+## 10. Log Token Usage From the API
+
+The OpenAI-compatible API response can include a `usage` object.
+
+That object usually looks like this:
+
+```json
+{
+  "usage": {
+    "prompt_tokens": 1234,
+    "completion_tokens": 200,
+    "total_tokens": 1434
+  }
+}
+```
+
+Meaning:
+
+```text
+prompt_tokens = input / prompt processing tokens
+completion_tokens = generated output tokens
+total_tokens = prompt_tokens + completion_tokens
+```
+
+So if I want to know how many tokens were used by one API call, I can read:
+
+```text
+response.usage.prompt_tokens
+response.usage.completion_tokens
+response.usage.total_tokens
+```
+
+---
+
+### Test Token Usage With curl
+
+Run a chat completion and print only the token usage:
+
+```bash
+curl -s https://example-words-here.trycloudflare.com/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $(cat /workspace/api-keys/current.key)" \
+  -d '{
+    "model": "qwen",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Say ready."
+      }
+    ],
+    "max_tokens": 20,
+    "temperature": 0
+  }' | jq '.usage'
+```
+
+Expected shape:
+
+```json
+{
+  "prompt_tokens": 18,
+  "completion_tokens": 4,
+  "total_tokens": 22
+}
+```
+
+If `usage` returns `null`, then the current server/framework response is not exposing usage for that request. In that case, use the llama-server logs for prompt/eval timing and add usage logging in the client or proxy layer.
+
+---
+
+### Save Full API Response With Usage
+
+For debugging, save the full response:
+
+```bash
+curl -s https://example-words-here.trycloudflare.com/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $(cat /workspace/api-keys/current.key)" \
+  -d '{
+    "model": "qwen",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Say ready."
+      }
+    ],
+    "max_tokens": 20,
+    "temperature": 0
+  }' | tee /workspace/logs/last_response.json
+```
+
+Then inspect usage:
+
+```bash
+cat /workspace/logs/last_response.json | jq '.usage'
+```
+
+Inspect the whole response:
+
+```bash
+cat /workspace/logs/last_response.json | jq
+```
+
+---
+
+### Append Token Usage to a Local Log File
+
+Create a simple script:
+
+```bash
+cat > /workspace/log_token_usage.sh <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+
+API_URL="https://example-words-here.trycloudflare.com/v1/chat/completions"
+API_KEY="$(cat /workspace/api-keys/current.key)"
+LOG_FILE="/workspace/logs/token-usage.log"
+
+mkdir -p /workspace/logs
+
+RESPONSE="$(
+  curl -s "$API_URL" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $API_KEY" \
+    -d '{
+      "model": "qwen",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Say ready."
+        }
+      ],
+      "max_tokens": 20,
+      "temperature": 0
+    }'
+)"
+
+PROMPT_TOKENS="$(echo "$RESPONSE" | jq -r '.usage.prompt_tokens // 0')"
+COMPLETION_TOKENS="$(echo "$RESPONSE" | jq -r '.usage.completion_tokens // 0')"
+TOTAL_TOKENS="$(echo "$RESPONSE" | jq -r '.usage.total_tokens // 0')"
+
+echo "$(date -Iseconds) prompt_tokens=$PROMPT_TOKENS completion_tokens=$COMPLETION_TOKENS total_tokens=$TOTAL_TOKENS" \
+  >> "$LOG_FILE"
+
+echo "$RESPONSE" | jq '.usage'
+SH
+
+chmod +x /workspace/log_token_usage.sh
+```
+
+Run it:
+
+```bash
+/workspace/log_token_usage.sh
+```
+
+View the usage log:
+
+```bash
+cat /workspace/logs/token-usage.log
+```
+
+Example:
+
+```text
+2026-06-07T23:41:22-04:00 prompt_tokens=18 completion_tokens=4 total_tokens=22
+```
+
+---
+
+### Retrieve Token Usage From Python
+
+Install the OpenAI SDK:
+
+```bash
+pip install -U openai
+```
+
+Use the protected Vast tunnel as the base URL:
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://example-words-here.trycloudflare.com/v1",
+    api_key="YOUR_CURRENT_KEY",
+)
+
+response = client.chat.completions.create(
+    model="qwen",
+    messages=[
+        {"role": "user", "content": "Say ready."}
+    ],
+    max_tokens=20,
+    temperature=0,
+)
+
+print(response.usage)
+
+print("prompt_tokens:", response.usage.prompt_tokens)
+print("completion_tokens:", response.usage.completion_tokens)
+print("total_tokens:", response.usage.total_tokens)
+```
+
+---
+
+### Retrieve Token Usage From Node / TypeScript
+
+Install the OpenAI SDK:
+
+```bash
+npm install openai
+```
+
+Example:
+
+```ts
+import OpenAI from "openai";
+
+const client = new OpenAI({
+  baseURL: "https://example-words-here.trycloudflare.com/v1",
+  apiKey: process.env.LOCAL_LLM_API_KEY,
+});
+
+const response = await client.chat.completions.create({
+  model: "qwen",
+  messages: [
+    {
+      role: "user",
+      content: "Say ready.",
+    },
+  ],
+  max_tokens: 20,
+  temperature: 0,
+});
+
+console.log(response.usage);
+
+console.log("prompt_tokens:", response.usage?.prompt_tokens);
+console.log("completion_tokens:", response.usage?.completion_tokens);
+console.log("total_tokens:", response.usage?.total_tokens);
+```
+
+---
+
+### Log Usage From Future Agents
+
+For future agents, every OpenAI-compatible call should capture the `usage` object when it exists.
+
+Basic logging shape:
+
+```json
+{
+  "timestamp": "2026-06-07T23:41:22-04:00",
+  "agent": "opencode",
+  "model": "qwen",
+  "prompt_tokens": 1234,
+  "completion_tokens": 200,
+  "total_tokens": 1434
+}
+```
+
+For a coding-agent API, this is useful because it shows:
+
+```text
+how large the prompt was
+how much context was sent
+how much output was generated
+how expensive each agent run would be on a paid API
+whether the agent is wasting context
+```
+
+---
+
+### Important Token Logging Note
+
+Caddy can log the HTTP request, status code, path, and latency.
+
+But Caddy does not automatically know the model token usage unless it reads the response body.
+
+So token accounting should happen either:
+
+```text
+inside the client / agent
+or inside a small custom proxy
+or by parsing the API response after each request
+```
+
+For now, the simplest version is:
+
+```text
+Call API
+→ read response.usage
+→ save prompt_tokens, completion_tokens, total_tokens
+```
+
+---
+
+## 11. Configure OpenCode
 
 In OpenCode, use an OpenAI-compatible provider.
 
@@ -579,7 +1002,7 @@ https://example-words-here.trycloudflare.com pointing to localhost:18001
 
 ---
 
-## 11. Rotate the API Key Over SSH
+## 12. Rotate the API Key Over SSH
 
 For now, the simplest rotation flow is direct SSH.
 
@@ -606,7 +1029,7 @@ pkill caddy || true
 export LOCAL_LLM_API_KEY="$(cat /workspace/api-keys/current.key)"
 
 nohup caddy run --config /etc/caddy/Caddyfile \
-  > /workspace/caddy.log 2>&1 &
+  > /workspace/logs/caddy.log 2>&1 &
 ```
 
 Test the new key:
@@ -620,7 +1043,7 @@ Then update OpenCode with the new API key.
 
 ---
 
-## 12. Final Working Layout
+## 13. Final Working Layout
 
 File layout:
 
@@ -632,7 +1055,12 @@ File layout:
 │   └── build/bin/llama-server
 ├── api-keys/
 │   └── current.key
-└── caddy.log
+├── log_token_usage.sh
+└── logs/
+    ├── llama-server.log
+    ├── token-usage.log
+    ├── last_response.json
+    └── caddy.log
 ```
 
 Runtime layout:
@@ -664,10 +1092,28 @@ OpenCode base URL:
 https://your-tunnel-url.trycloudflare.com/v1
 ```
 
-Default model loading mode:
+Current model loading mode:
 
 ```text
--np 1
+--parallel 2
+-c 40960
+--cont-batching
+```
+
+Meaning:
+
+```text
+two parallel slots
+protected shared API testing
+about 40k context setting
+continuous batching enabled
+more VRAM pressure than solo mode
+```
+
+Solo loading mode:
+
+```text
+--parallel 1
 -c 40960
 ```
 
@@ -677,28 +1123,12 @@ Meaning:
 single-user protected API
 about 40k context
 one active coding agent
-```
-
-Experimental shared mode:
-
-```text
--np 2
--c 40960
---cont-batching
-```
-
-Meaning:
-
-```text
-two parallel slots
-shared API testing
-more VRAM pressure
-less comfortable long-context use
+lower VRAM pressure
 ```
 
 ---
 
-## 13. Notes
+## 14. Notes
 
 The key difference is this:
 
@@ -743,16 +1173,42 @@ For batching, this setup needs to be decided at model load time.
 The current default is:
 
 ```text
-single-user coding API
+light shared coding API
 ```
 
-If I want to share the endpoint with friends, I need to test:
+with:
 
 ```text
--np 2
+--parallel 2
 --cont-batching
 ```
 
-and watch VRAM, latency, prompt processing speed, and context failures.
+I need to watch:
+
+```text
+VRAM usage
+latency
+prompt processing speed
+generation speed
+context failures
+usage.prompt_tokens
+usage.completion_tokens
+usage.total_tokens
+llama-server prompt eval logs
+```
+
+Token accounting comes from the API response when available:
+
+```text
+response.usage.prompt_tokens
+response.usage.completion_tokens
+response.usage.total_tokens
+```
+
+Prompt-processing speed comes from the server logs:
+
+```text
+/workspace/logs/llama-server.log
+```
 
 For this version, one protected API from the Vast server is enough.

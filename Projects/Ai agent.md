@@ -1,3 +1,4 @@
+```mermaid
 flowchart TD
     A[User gives goal] --> B[AI agent receives request]
     B --> C[Reads context]
@@ -22,3 +23,4 @@ flowchart TD
     subgraph Tools[External Capabilities]
         G
     end
+```

@@ -1,26 +1,39 @@
 ```mermaid
 flowchart TD
-    A[User gives goal] --> B[AI agent receives request]
-    B --> C[Reads context]
-    C --> D[Decides next step]
-    D --> E{Need tool}
-    E -- No --> F[Respond directly]
-    E -- Yes --> G[Call tool or MCP or API]
-    G --> H[Observe result]
-    H --> I{Task complete}
-    I -- No --> D
-    I -- Yes --> J[Return final answer]
+    A[User request] --> B{Old deterministic program}
 
-    subgraph Runtime[Agent Runtime]
+    B --> C[Predefined input]
+    C --> D[Fixed rules]
+    D --> E[Known output]
+
+    A --> F{AI agent system}
+
+    F --> G[Interprets messy input]
+    G --> H[Chooses next step]
+    H --> I{Need tool or skill}
+    I -- Yes --> J[Call tool / MCP / API]
+    I -- No --> K[Respond directly]
+    J --> L[Observe result]
+    L --> M{Task complete}
+    M -- No --> H
+    M -- Yes --> N[Return result]
+
+    subgraph OldProgramming[Older Deterministic Programming]
         B
         C
         D
         E
-        H
-        I
     end
 
-    subgraph Tools[External Capabilities]
+    subgraph AgentProgramming[AI Agent Runtime]
+        F
         G
+        H
+        I
+        J
+        K
+        L
+        M
+        N
     end
 ```

@@ -1,21 +1,16 @@
 flowchart TD
     A[User gives goal] --> B[AI agent receives request]
-
     B --> C[Reads context]
     C --> D[Decides next step]
-
-    D --> E{Need a tool?}
-
-    E -->|No| F[Respond directly]
-    E -->|Yes| G[Call tool / MCP / API]
-
+    D --> E{Need tool}
+    E -- No --> F[Respond directly]
+    E -- Yes --> G[Call tool or MCP or API]
     G --> H[Observe result]
-    H --> I{Task complete?}
+    H --> I{Task complete}
+    I -- No --> D
+    I -- Yes --> J[Return final answer]
 
-    I -->|No| D
-    I -->|Yes| J[Return final answer or action result]
-
-    subgraph Agent Runtime
+    subgraph Runtime[Agent Runtime]
         B
         C
         D
@@ -24,6 +19,6 @@ flowchart TD
         I
     end
 
-    subgraph External Capabilities
+    subgraph Tools[External Capabilities]
         G
     end

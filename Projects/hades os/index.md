@@ -6,6 +6,7 @@ Project folder for Hades OS notes, study logs, and supporting documentation.
 
 - [Updates June 10](./updates%20june%2010/index.md)
 - [Updates June 11](./updates%20june%2011/index.md)
+- [Updates June 12](./updates%20june%2012/index.md)
 
 ## Source
 

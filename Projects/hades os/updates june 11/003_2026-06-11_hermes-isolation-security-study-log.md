@@ -5,6 +5,25 @@
 **Repo:** `hades-os-monorepo`  
 **Focus:** database isolation, request isolation, prompt-injection resistance, auth, and multi-user safety.
 
+## Table of Contents
+
+- [1. Question Being Studied](#1-question-being-studied)
+- [2. The Main Design Principle](#2-the-main-design-principle)
+- [3. Scale, Isolation, and Shared Infrastructure](#3-scale-isolation-and-shared-infrastructure)
+  - [3.1 Backend-Owned Boundary](#31-backend-owned-boundary)
+  - [3.2 Fast Memory vs Durable Memory](#32-fast-memory-vs-durable-memory)
+  - [3.3 Load Balancing vs Job Queueing](#33-load-balancing-vs-job-queueing)
+  - [3.4 Multi-User Hermes Safety](#34-multi-user-hermes-safety)
+  - [3.5 Prompt Injection and Secret Hygiene](#35-prompt-injection-and-secret-hygiene)
+- [4. Recommended Data Separation](#4-recommended-data-separation)
+- [5. How Hermes Should Interact With Memory](#5-how-hermes-should-interact-with-memory)
+- [6. Authentication Model](#6-authentication-model)
+- [7. Encryption And Storage](#7-encryption-and-storage)
+- [8. Risk / Tradeoff Summary](#8-risk--tradeoff-summary)
+- [9. Recommended MVP Path](#9-recommended-mvp-path)
+- [10. MVP Security Flow](#10-mvp-security-flow)
+- [11. Final Answer To The Core Question](#11-final-answer-to-the-core-question)
+
 ## Question Being Studied
 
 The core question is:
@@ -31,38 +50,121 @@ Instead:
 
 That means shared infrastructure is acceptable as long as each request is isolated before it reaches Hermes.
 
-## Target Isolation Model
+## 3. Scale, Isolation, and Shared Infrastructure
 
-```mermaid
-flowchart TD
-  U1[User A] --> AUTH[Auth token / session]
-  U2[User B] --> AUTH
-  AUTH --> TENANT[Tenant resolver]
-  TENANT --> SCOPE[Load only scoped data]
-  SCOPE --> PROMPT[Build prompt for one request]
-  PROMPT --> HERMES[Hermes runtime]
-  HERMES --> MODEL[OpenRouter or local model]
-  MODEL --> HERMES
-  HERMES --> BACKEND[Validated JSON response]
-  BACKEND --> STORE[Write back to isolated tenant data]
-```
+The big operational question is not whether Hermes can run on shared servers.
 
-## What Must Stay Isolated
+It can.
 
-The following must never be mixed across users:
+The real question is how the system keeps one user's data separate from another user's data when:
 
-- memory records
-- drafts
-- minion inventories
-- session summaries
-- tool results
-- social assignment data
-- prompt history used for retrieval
-- error logs that contain sensitive payloads
+- many users are active at once
+- some requests are offline-queued
+- some requests are retried
+- some jobs are batched
+- Hermes runs on one shared provider or one shared local server
 
-The tenant boundary should be applied before prompt construction, not after the model responds.
+The answer is to separate **ownership**, **retrieval**, and **execution**.
 
-## Recommended Data Separation
+### 3.1 Backend-Owned Boundary
+
+The backend must own the trust boundary.
+
+That means:
+
+- authenticate the user first
+- resolve tenant and user identity
+- load only that tenant's data
+- build one scoped prompt
+- call Hermes with that scoped prompt
+- save the response back under the same tenant
+
+Hermes should never be the place where tenant separation is decided.
+
+If the backend does the scoping correctly, the same Hermes service can serve many users safely because each call is already isolated before it leaves the backend.
+
+### 3.2 Fast Memory vs Durable Memory
+
+We should not hit the database for every single repeated prompt if we can avoid it.
+
+The better design is:
+
+- **durable memory** in the database for truth, history, summaries, and audit
+- **fast memory** in cache for recent scoped context and low-latency reuse
+
+The backend should check fast memory first.
+
+If there is no cache hit, the backend reads the tenant-scoped records from durable storage, compacts them, and then refreshes the cache.
+
+That gives us:
+
+- speed
+- isolation
+- recovery
+- auditability
+
+It also means Hermes stays stateless instead of carrying cross-user state in its own process.
+
+### 3.3 Load Balancing vs Job Queueing
+
+This is where the design splits into two different scaling tools:
+
+- **load balancing** spreads incoming requests across multiple backend instances
+- **job queueing** stores work that can be processed later by workers
+
+They solve different problems.
+
+Load balancing helps when many users are actively talking to the app.
+
+Job queueing helps when a task should keep running even if the user disconnects or the server is busy.
+
+For Hades OS, both are useful:
+
+- load balancer in front of the backend API
+- durable job queue behind the API
+- worker pool processing queued Hermes jobs
+
+That way:
+
+- traffic is spread across servers
+- work is not lost if a user drops offline
+- overflow jobs wait safely in queue
+
+### 3.4 Multi-User Hermes Safety
+
+If 10 or 20 users hit the same Hermes service at once, the service itself is not the thing that must keep them separated.
+
+The backend must do that before the request ever reaches Hermes.
+
+Safe multi-user behavior requires:
+
+- scoped prompt construction per request
+- tenant-scoped cache keys
+- tenant-scoped database reads
+- no shared global memory injection
+- request IDs and session IDs bound to one user or tenant
+- validated response schemas before storage
+
+That is how one Hermes runtime can stay shared while the data remains private.
+
+### 3.5 Prompt Injection and Secret Hygiene
+
+Prompt injection is a separate risk from tenant mixing, and both have to be handled.
+
+The rule is simple:
+
+- treat all user content as untrusted input
+- keep policy/system instructions separate
+- never let user-supplied text override backend rules
+- never inject secrets unless absolutely required
+- redact sensitive fields before sending to Hermes
+- validate output against a strict allowlist schema
+
+If a prompt tries to trick Hermes into revealing another user's memory, that should fail because the backend never placed that other user's memory into the prompt in the first place.
+
+If a prompt tries to hijack instructions, the backend should still validate and reject any unsafe or out-of-contract output.
+
+## 4. Recommended Data Separation
 
 ```mermaid
 flowchart LR
@@ -82,7 +184,7 @@ Practical rule:
 - a shared database is fine
 - shared data must be tenant-scoped at query time
 
-## How Hermes Should Interact With Memory
+## 5. How Hermes Should Interact With Memory
 
 Hermes itself should not decide which user's memory to load.
 
@@ -110,6 +212,21 @@ sequenceDiagram
   Hermes-->>Backend: Structured response
   Backend->>MemoryStore: Save result under same tenant
 ```
+
+## What Must Stay Isolated
+
+The following must never be mixed across users:
+
+- memory records
+- drafts
+- minion inventories
+- session summaries
+- tool results
+- social assignment data
+- prompt history used for retrieval
+- error logs that contain sensitive payloads
+
+The tenant boundary should be applied before prompt construction, not after the model responds.
 
 ## Why A Shared Hermes Service Can Still Be Safe
 

@@ -16,6 +16,7 @@
   - [3.4 Multi-User Hermes Safety](#34-multi-user-hermes-safety)
   - [3.5 Prompt Injection and Secret Hygiene](#35-prompt-injection-and-secret-hygiene)
   - [3.6 Agentic Workloads vs Coding Workloads](#36-agentic-workloads-vs-coding-workloads)
+  - [3.7 Vast.ai Capacity Assumption](#37-vastai-capacity-assumption)
 - [4. Recommended Data Separation](#4-recommended-data-separation)
 - [5. How Hermes Should Interact With Memory](#5-how-hermes-should-interact-with-memory)
 - [6. Authentication Model](#6-authentication-model)
@@ -207,6 +208,41 @@ In other words:
 - the backend and Hermes workers still need scaling logic
 - the model server may stay singular much longer
 - many users can share the same inference server if requests are scoped correctly
+
+### 3.7 Vast.ai Capacity Assumption
+
+The capacity assumption for this study is based on your observed private inference setup:
+
+- a 3090 with 24 GB VRAM
+- a `32k` context limit
+- no CPU offloading
+- very fast token throughput
+- about `150` output tokens per second
+- about `2500` prompt tokens per second with cache and inference logic
+
+Your new expectation is that a 5090 with 32 GB VRAM should handle this even better if it keeps the same context limit and avoids CPU offloading.
+
+That implies:
+
+- one strong Vast.ai-hosted private model server may be enough for agent processing
+- batched inference can raise throughput for similar prompts
+- parallel processing should happen at the backend/worker layer, not by mixing user contexts inside one prompt
+- many requests can stay on one model server as long as the backend isolates them first
+
+For this use case, the model workload is closer to high-throughput agentic generation than heavy coding.
+
+That matters because:
+
+- prompts are often similar across minions and social tasks
+- cache hit rates should be high
+- context can stay compact
+- a single GPU server may be the right first scale unit
+
+The practical scaling rule is:
+
+- keep one strong model server until real load proves it is insufficient
+- scale backend workers and queue handling first
+- add more model servers only if VRAM, latency, or fault tolerance become the bottleneck
 
 ## 4. Recommended Data Separation
 

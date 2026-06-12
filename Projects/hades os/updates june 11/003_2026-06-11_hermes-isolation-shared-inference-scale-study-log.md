@@ -1,9 +1,9 @@
-# Study Log: Hermes Isolation, Tenant Safety, and Shared Runtime Risk
+# Study Log: Hermes Isolation, Shared Inference, and Agentic Scale
 
 **Date:** June 11, 2026  
 **Topic:** How Hades OS should keep user data isolated when multiple people share the same Hermes service, the same OpenRouter provider, or the same local model server.  
 **Repo:** `hades-os-monorepo`  
-**Focus:** database isolation, request isolation, prompt-injection resistance, auth, and multi-user safety.
+**Focus:** database isolation, request isolation, prompt-injection resistance, auth, multi-user safety, and shared inference scaling.
 
 ## Table of Contents
 
@@ -15,6 +15,7 @@
   - [3.3 Load Balancing vs Job Queueing](#33-load-balancing-vs-job-queueing)
   - [3.4 Multi-User Hermes Safety](#34-multi-user-hermes-safety)
   - [3.5 Prompt Injection and Secret Hygiene](#35-prompt-injection-and-secret-hygiene)
+  - [3.6 Agentic Workloads vs Coding Workloads](#36-agentic-workloads-vs-coding-workloads)
 - [4. Recommended Data Separation](#4-recommended-data-separation)
 - [5. How Hermes Should Interact With Memory](#5-how-hermes-should-interact-with-memory)
 - [6. Authentication Model](#6-authentication-model)
@@ -163,6 +164,49 @@ The rule is simple:
 If a prompt tries to trick Hermes into revealing another user's memory, that should fail because the backend never placed that other user's memory into the prompt in the first place.
 
 If a prompt tries to hijack instructions, the backend should still validate and reject any unsafe or out-of-contract output.
+
+### 3.6 Agentic Workloads vs Coding Workloads
+
+This is why one strong private AI server can be a realistic fit for Hermes even when the same system serves many users.
+
+Agentic tasks usually look like:
+
+- create a minion draft
+- assign a social action
+- summarize a conversation
+- fill a structured card
+- continue a queued workflow
+
+These requests are often:
+
+- shorter
+- more repetitive
+- more structurally similar
+- easier to batch
+- more cache-friendly
+
+Coding workloads are usually heavier because they need:
+
+- longer context
+- more file awareness
+- more back-and-forth
+- more tool calls
+- more diffs and patch reasoning
+
+So the inference server can be optimized around the agentic case:
+
+- high cache hit rate
+- batched inference for similar prompts
+- parallel worker handling at the backend layer
+- one shared private AI server until real load proves otherwise
+
+That makes the model layer simpler than the orchestration layer.
+
+In other words:
+
+- the backend and Hermes workers still need scaling logic
+- the model server may stay singular much longer
+- many users can share the same inference server if requests are scoped correctly
 
 ## 4. Recommended Data Separation
 

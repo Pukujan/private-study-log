@@ -5,8 +5,16 @@ Use this as the default playbook for future Hermes/Cortex work.
 ## Model Split
 
 - `5.5 xhigh`: hardest review, root-cause analysis, architecture gaps, safety-sensitive changes, cross-file path cleanup.
+- `5.5 high`: long planning, difficult debugging, and detailed reasoning when you want more depth than `mini` but do not need full `xhigh`.
 - `5.4 mini` with `medium`: implementation once the plan is clear, especially multi-file edits and test-first fixes.
 - `5.4 mini` with `low`: small doc/config changes, straightforward mechanical edits, narrow refactors.
+
+## Where Deep Research Fits
+
+- Use Deep Research when the task is mostly about gathering, comparing, and synthesizing lots of external sources before coding.
+- Use it for broad architecture research, market or docs sweeps, or when you want a sourced background brief before the coding pass.
+- Do not use it as a substitute for implementation or repo-local debugging.
+- Best pattern: Deep Research for evidence gathering, `5.5 high` or `xhigh` for reasoning over that evidence, then `5.4 mini` for the code changes.
 
 ## When To Use Each
 
@@ -20,6 +28,7 @@ Use this as the default playbook for future Hermes/Cortex work.
    - Define the goal, canonical paths, constraints, and done conditions.
    - Read the repo instructions and the relevant docs first.
    - If the task is messy, ask for a plan before coding.
+   - If the task needs a lot of outside evidence, use Deep Research first and bring the findings back into the plan.
 
 2. Review
    - Compare the handoff against live code.
@@ -90,3 +99,4 @@ Use this as the default playbook for future Hermes/Cortex work.
 If the task is still fuzzy, use `xhigh` to turn it into a crisp handoff.
 If the task is already crisp, use `5.4 mini` to execute it.
 If the task is risky or touches shared state, end with a review pass.
+If the task needs lots of external evidence before coding, add Deep Research before the plan/reasoning pass.

@@ -243,14 +243,24 @@ Use `IMPORT-MAP.json`, `DIRECTORY-TREE.txt`, and source files to make this deter
 
 ---
 
+## Source Baseline Confirmation
+
+**No Cortex or Hermes plugin source has changed after snapshot commit `d1c6e38`.** The snapshot at `cortex-snapshot/` reflects the current local state exactly. Verified by normalized diff (CRLF stripped) of `mcp.py`, `cortex-assured-driver/__init__.py`, and `tests/test_plugin.py` against live files — all three diffs are empty. Line-level recommendations against the snapshot will target current code.
+
+**Snapshot source commit:** `28f752f0689ceaab316b23214d7ce2327391bd30` (stupidly-simple-cortex brain repo)
+
+---
+
 ## Documents To Read First (Priority Order)
+
+> **Note on paths:** documents at the repository root were added after the cortex-snapshot was frozen. They are NOT under `cortex-snapshot/docs/`. The paths below reflect their actual locations in the repo. Documents inside `cortex-snapshot/` are frozen source or docs that shipped with the code.
 
 1. `cortex-snapshot/SNAPSHOT-README.md` — manifest and context
 2. `CORTEX-TARGET-ARCHITECTURE-v3-2026-07-16.md` — **the target architecture (read this first, it supersedes all prior versions)**
-3. `cortex-snapshot/docs/CORTEX-EXPECTED-OUTCOME-2026-07-16.md` — prior expected outcome (context only, partially superseded)
-4. `cortex-snapshot/docs/CORTEX-ALIGNMENT-REVIEW-2026-07-16.md` — strict review of target vs existing
-5. `cortex-snapshot/docs/CORTEX-RESEARCH-REVIEW-2026-07-16.md` — production harness research findings
-6. `cortex-snapshot/docs/CORTEX-DEEP-RESEARCH-HANDOFF-2026-07-16.md` — original handoff (context only)
+3. `CORTEX-EXPECTED-OUTCOME-2026-07-16.md` — prior expected outcome (repository root, context only, partially superseded by v3)
+4. `CORTEX-ALIGNMENT-REVIEW-2026-07-16.md` — strict review of target vs existing (repository root)
+5. `CORTEX-RESEARCH-REVIEW-2026-07-16.md` — production harness research findings (repository root)
+6. `CORTEX-DEEP-RESEARCH-HANDOFF-2026-07-16.md` — original handoff (repository root, context only)
 7. `cortex-snapshot/docs/harness/KNOWLEDGE-ESCALATION.md` — the sufficiency contract
 8. `cortex-snapshot/docs/research/DESIGN-tiered-lifecycle-pipeline.md` — the 9-stage routing design
 9. `cortex-snapshot/docs/HARNESS-SCORECARD-CONSOLIDATED.md` — honest measured vs aspirational
@@ -261,13 +271,14 @@ Use `IMPORT-MAP.json`, `DIRECTORY-TREE.txt`, and source files to make this deter
 14. `cortex-snapshot/cortex_core/mcp.py` — the MCP server (3,074 lines, needs splitting)
 15. `cortex-snapshot/cortex_core/research_sufficiency.py` — receipt system
 16. `cortex-snapshot/hermes-plugin/cortex-assured-driver/__init__.py` — the enforcement hook
-17. `cortex-snapshot/cortex_core/fanout.py` — parallel execution engine
-18. `cortex-snapshot/cortex_core/mission_driver.py` — heterogeneous decomposition
-19. `cortex-snapshot/cortex_core/plane2_driver.py` — phase coercion driver
-20. `cortex-snapshot/ARCHITECTURE.md` — architecture map (what's where)
-21. `cortex-snapshot/HANDOFF.md` — governance wrapper handoff, LEGACY_UNASSURED
-22. `cortex-snapshot/MULTIAGENT.md` — driver + workers pattern
-23. `cortex-snapshot/README.md` — wrapper boundary and plane A/B split
+17. `cortex-snapshot/hermes-plugin/cortex-assured-driver/tests/test_plugin.py` — 19 tests
+18. `cortex-snapshot/cortex_core/fanout.py` — parallel execution engine
+19. `cortex-snapshot/cortex_core/mission_driver.py` — heterogeneous decomposition
+20. `cortex-snapshot/cortex_core/plane2_driver.py` — phase coercion driver
+21. `cortex-snapshot/ARCHITECTURE.md` — architecture map (what's where)
+22. `cortex-snapshot/HANDOFF.md` — governance wrapper handoff, LEGACY_UNASSURED
+23. `cortex-snapshot/MULTIAGENT.md` — driver + workers pattern
+24. `cortex-snapshot/README.md` — wrapper boundary and plane A/B split
 
 ---
 

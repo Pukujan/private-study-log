@@ -323,20 +323,21 @@ No pushback for its own sake. Every critique must trace to: does this help the h
 - ChatGPT's expanded definition (provided separately in conversation, included above)
 
 ### The build plan (what is proposed)
-- `D:\workspace\EVIDENCE-BASED-BUILD-PLAN.md` — Fable's full 38KB plan with evidence inventory
+- `source-materials/EVIDENCE-BASED-BUILD-PLAN.md` — Fable's full 38KB plan with evidence inventory
 
 ### Today's research (the evidence base)
-- `D:\workspace\decision-confidence-research.md` — confidence scoring research
-- `D:\workspace\research-risk-tradeoff-modeling.md` — risk tradeoff research
-- `D:\workspace\proactive-context-injector-research.md` — context injector research
-- `D:\workspace\RED-TEAM-PUSHBACK-ontology-confidence-risk-injection.md` — 14-argument red team
+- `source-materials/decision-confidence-research.md` — confidence scoring research
+- `source-materials/research-risk-tradeoff-modeling.md` — risk tradeoff research
+- `source-materials/proactive-context-injector-research.md` — context injector research
+- `source-materials/RED-TEAM-PUSHBACK-ontology-confidence-risk-injection.md` — 14-argument red team
 
-### Cortex brain (current state)
-- `D:\claude\stupidly-simple-cortex\docs\ontology\README.md`
-- `D:\claude\stupidly-simple-cortex\docs\ontology\schema.yaml`
-- `D:\claude\stupidly-simple-cortex\docs\HARNESS-SCORECARD-CONSOLIDATED.md`
-- `D:\claude\stupidly-simple-cortex\docs\BUILD-PLAN.md`
-- `D:\hermes\cortex\workspaces\hades\docs\MASTER-INDEX-AND-DECISION-LOG.md`
+### Cortex workspace decision log
+- `source-materials/MASTER-INDEX-AND-DECISION-LOG.md` — master index and decision log (current decisions vs stale architecture)
+
+### Cortex brain (current state — accessible via live public repos)
+- SCC repo: https://github.com/Pukujan/stupidly-simple-cortex (pinned at commit 28f752f0689ceaab316b23214d7ce2327391bd30)
+- Wrapper repo: https://github.com/Pukujan/cortex-agent-wrapper (pinned at commit 95d72d5f9e30ba9fca983b3297d0c567df0f1bfc)
+- Key files within SCC repo: `docs/ontology/README.md`, `docs/ontology/schema.yaml`, `docs/HARNESS-SCORECARD-CONSOLIDATED.md`, `docs/BUILD-PLAN.md`, `docs/DECISION-LOG.md`, `docs/ARCH-DEBUG-DECISION-mcp-tool-surface-and-coercion-2026-07-08.md`
 
 ### GitHub issues
 - SCC: https://github.com/Pukujan/stupidly-simple-cortex/issues (50 open)

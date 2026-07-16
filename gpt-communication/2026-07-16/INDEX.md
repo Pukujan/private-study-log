@@ -22,7 +22,13 @@ All communication is dated and indexed here.
 | 1 | OUT → ChatGPT | `BRIEF-v4-evidence-based-build-plan.md` | Evidence-based build plan (no more v0s) | Sent ✓ |
 | 2 | ChatGPT → IN | `RESPONSE-v4-cortex-definition-corrections.md` | 7 corrections + north star definition | Received ✓ |
 | 3 | ChatGPT → IN | (conversation) | Expanded definition: runtime-independent assurance platform | Received ✓ |
-| 4 | OUT → ChatGPT | `BRIEF-v5-deep-research-plan-evaluation.md` | Deep research: evaluate Fable's plan against Cortex definition | Awaiting send |
+| 4 | OUT → ChatGPT | `BRIEF-v5-deep-research-plan-evaluation.md` | Deep research: evaluate Fable's plan against Cortex definition | Ready to send ✓ |
+| -- | SOURCE | `source-materials/EVIDENCE-BASED-BUILD-PLAN.md` | Fable's full 38KB plan | Committed ✓ |
+| -- | SOURCE | `source-materials/decision-confidence-research.md` | Confidence scoring research | Committed ✓ |
+| -- | SOURCE | `source-materials/research-risk-tradeoff-modeling.md` | Risk tradeoff research | Committed ✓ |
+| -- | SOURCE | `source-materials/proactive-context-injector-research.md` | Context injector research | Committed ✓ |
+| -- | SOURCE | `source-materials/RED-TEAM-PUSHBACK-ontology-confidence-risk-injection.md` | 14-argument red team | Committed ✓ |
+| -- | SOURCE | `source-materials/MASTER-INDEX-AND-DECISION-LOG.md` | Master index + decision log | Committed ✓ |
 
 ---
 

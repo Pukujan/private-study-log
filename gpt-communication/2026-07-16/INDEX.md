@@ -22,7 +22,9 @@ All communication is dated and indexed here.
 | 1 | OUT → ChatGPT | `BRIEF-v4-evidence-based-build-plan.md` | Evidence-based build plan (no more v0s) | Sent ✓ |
 | 2 | ChatGPT → IN | `RESPONSE-v4-cortex-definition-corrections.md` | 7 corrections + north star definition | Received ✓ |
 | 3 | ChatGPT → IN | (conversation) | Expanded definition: runtime-independent assurance platform | Received ✓ |
-| 4 | OUT → ChatGPT | `BRIEF-v5-deep-research-plan-evaluation.md` | Deep research: evaluate Fable's plan against Cortex definition | Ready to send ✓ |
+| 4 | OUT → ChatGPT | `BRIEF-v5-deep-research-plan-evaluation.md` | Deep research: evaluate Fable's plan against Cortex definition | Sent ✓ |
+| 5 | ChatGPT → IN | `RESPONSE-v5A-deep-research-plan-evaluation.md` | Deep research first pass: verdict NO, replace Build 1 with governed vertical slice | Received ✓ |
+| 6 | ChatGPT → IN | `RESPONSE-v5B-deep-research-self-correction.md` | Deep research self-correction: vertical slice was still quick-win bias, contract-complete first release | Received ✓ |
 | -- | SOURCE | `source-materials/EVIDENCE-BASED-BUILD-PLAN.md` | Fable's full 38KB plan | Committed ✓ |
 | -- | SOURCE | `source-materials/decision-confidence-research.md` | Confidence scoring research | Committed ✓ |
 | -- | SOURCE | `source-materials/research-risk-tradeoff-modeling.md` | Risk tradeoff research | Committed ✓ |

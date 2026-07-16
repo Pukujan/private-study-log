@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cortex.local/schemas/assurance/success-contract.schema.json",
+  "title": "Cortex success contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "contract_id", "task_id", "desired_user_outcomes",
+    "observable_behaviors", "domain_invariants", "acceptance_criteria",
+    "prohibited_behaviors", "oracle_lanes", "evaluator_independence",
+    "repeatability", "human_review_boundaries"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "contract_id": {"type": "string", "minLength": 1},
+    "task_id": {"type": "string", "minLength": 1},
+    "desired_user_outcomes": {"$ref": "#/$defs/nonEmptyStrings"},
+    "observable_behaviors": {"$ref": "#/$defs/nonEmptyStrings"},
+    "domain_invariants": {"$ref": "#/$defs/nonEmptyStrings"},
+    "acceptance_criteria": {"$ref": "#/$defs/nonEmptyStrings"},
+    "prohibited_behaviors": {"$ref": "#/$defs/nonEmptyStrings"},
+    "human_review_boundaries": {"$ref": "#/$defs/nonEmptyStrings"},
+    "oracle_lanes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["oracle_id", "authority", "scope", "fixture_sha256", "hidden_from_builder"],
+        "properties": {
+          "oracle_id": {"type": "string", "minLength": 1},
+          "authority": {"enum": ["deterministic", "external_observer", "human"]},
+          "scope": {"type": "string", "minLength": 1},
+          "fixture_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "hidden_from_builder": {"type": "boolean"}
+        }
+      }
+    },
+    "evaluator_independence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["builder_may_certify", "cross_driver_required", "external_replay_required"],
+      "properties": {
+        "builder_may_certify": {"const": false},
+        "cross_driver_required": {"type": "boolean"},
+        "external_replay_required": {"type": "boolean"}
+      }
+    },
+    "repeatability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minimum_distinct_drivers", "clean_workspace_required"],
+      "properties": {
+        "minimum_distinct_drivers": {"type": "integer", "minimum": 1},
+        "clean_workspace_required": {"type": "boolean"}
+      }
+    }
+  },
+  "$defs": {
+    "nonEmptyStrings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "minLength": 1}
+    }
+  }
+}

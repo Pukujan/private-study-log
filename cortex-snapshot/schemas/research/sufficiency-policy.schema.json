@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cortex.local/schemas/research/sufficiency-policy.schema.json",
+  "title": "Cortex decision-specific research sufficiency policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "policy_id", "task_id", "risk_tier", "valid_from", "expires_at", "lanes", "claim_rules", "conflict_policy", "review_policy", "human_requirements", "invalidation_triggers"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "policy_id": {"type": "string", "minLength": 1},
+    "task_id": {"type": "string", "minLength": 1},
+    "risk_tier": {"enum": ["low", "medium", "high"]},
+    "valid_from": {"type": "string", "format": "date-time"},
+    "expires_at": {"type": "string", "format": "date-time"},
+    "lanes": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["lane_id", "required_question_ids", "required_authority_classes", "min_independence_groups", "max_age_days", "snapshot_required"],
+        "properties": {
+          "lane_id": {"type": "string", "minLength": 1},
+          "required_question_ids": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+          "required_authority_classes": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+          "min_independence_groups": {"type": "integer", "minimum": 1},
+          "max_age_days": {"type": "integer", "minimum": 1},
+          "snapshot_required": {"type": "boolean"}
+        }
+      }
+    },
+    "claim_rules": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["claim_kind", "required_authority_classes", "min_independence_groups", "max_age_days"],
+        "properties": {
+          "claim_kind": {"type": "string", "minLength": 1},
+          "required_authority_classes": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+          "min_independence_groups": {"type": "integer", "minimum": 1},
+          "max_age_days": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "conflict_policy": {
+      "type": "object", "additionalProperties": false, "required": ["blocking_severities"],
+      "properties": {"blocking_severities": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}}
+    },
+    "review_policy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["required_from_risk", "trusted_issuer_ids", "required_scopes"],
+      "properties": {
+        "required_from_risk": {"enum": ["low", "medium", "high"]},
+        "trusted_issuer_ids": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "required_scopes": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "human_requirements": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["scope_id", "required_from_risk", "accepted_roles", "trusted_issuer_ids"],
+        "properties": {
+          "scope_id": {"type": "string", "minLength": 1},
+          "required_from_risk": {"enum": ["low", "medium", "high"]},
+          "accepted_roles": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+          "trusted_issuer_ids": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+        }
+      }
+    },
+    "invalidation_triggers": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+  }
+}

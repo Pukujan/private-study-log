@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cortex.local/schemas/research/sufficiency-attestation.schema.json",
+  "title": "Trusted research sufficiency attestation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "attestation_id", "kind", "proposal_sha256", "policy_sha256", "decision_id", "authority", "issuer_id", "scope_ids", "verdict", "reason", "evidence_refs", "issued_at", "expires_at"],
+  "properties": {
+    "schema_version": {"const": 1}, "attestation_id": {"type": "string", "minLength": 1},
+    "kind": {"enum": ["SUBSTANTIVE_REVIEW", "HUMAN_APPROVAL"]},
+    "proposal_sha256": {"$ref": "#/$defs/sha256"}, "policy_sha256": {"$ref": "#/$defs/sha256"},
+    "decision_id": {"type": "string", "minLength": 1},
+    "authority": {"type": "object", "additionalProperties": false, "required": ["authority_id", "authority_family", "authority_type", "role", "credential_ref"], "properties": {"authority_id": {"type": "string", "minLength": 1}, "authority_family": {"type": "string", "minLength": 1}, "authority_type": {"enum": ["external_evaluator", "human"]}, "role": {"type": "string", "minLength": 1}, "credential_ref": {"type": "string", "minLength": 1}}},
+    "issuer_id": {"type": "string", "minLength": 1}, "scope_ids": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "verdict": {"enum": ["ADEQUATE", "INADEQUATE", "ACCEPT", "REJECT", "ABSTAIN"]},
+    "reason": {"type": "string", "minLength": 1}, "evidence_refs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "issued_at": {"type": "string", "format": "date-time"}, "expires_at": {"type": "string", "format": "date-time"}
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

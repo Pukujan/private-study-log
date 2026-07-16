@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cortex.local/schemas/research/sufficiency-proposal.schema.json",
+  "title": "Cortex frozen research sufficiency proposal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "proposal_id", "run_id", "task_id", "research_task_id", "decision", "policy_id", "policy_sha256", "proposer", "report", "questions", "claims", "evidence", "conflicts", "remaining_uncertainties", "rejected_evidence", "invalidation_triggers"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "proposal_id": {"type": "string", "minLength": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "task_id": {"type": "string", "minLength": 1},
+    "research_task_id": {"type": "string", "minLength": 1},
+    "decision": {
+      "type": "object", "additionalProperties": false,
+      "required": ["decision_id", "statement", "scope", "downstream_work", "risk_tier", "as_of", "expires_at"],
+      "properties": {
+        "decision_id": {"type": "string", "minLength": 1}, "statement": {"type": "string", "minLength": 1},
+        "scope": {"type": "string", "minLength": 1}, "downstream_work": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "risk_tier": {"enum": ["low", "medium", "high"]}, "as_of": {"type": "string", "format": "date-time"},
+        "expires_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "policy_id": {"type": "string", "minLength": 1}, "policy_sha256": {"$ref": "#/$defs/sha256"},
+    "proposer": {"type": "object", "additionalProperties": false, "required": ["id", "family"], "properties": {"id": {"type": "string", "minLength": 1}, "family": {"type": "string", "minLength": 1}}},
+    "report": {"$ref": "#/$defs/snapshot"},
+    "questions": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["question_id", "lane_id", "status", "claim_ids"], "properties": {"question_id": {"type": "string", "minLength": 1}, "lane_id": {"type": "string", "minLength": 1}, "status": {"enum": ["ANSWERED", "UNRESOLVED"]}, "claim_ids": {"type": "array", "items": {"type": "string", "minLength": 1}}}}},
+    "claims": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["claim_id", "lane_id", "claim_kind", "statement", "evidence_ids"], "properties": {"claim_id": {"type": "string", "minLength": 1}, "lane_id": {"type": "string", "minLength": 1}, "claim_kind": {"type": "string", "minLength": 1}, "statement": {"type": "string", "minLength": 1}, "evidence_ids": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}}}},
+    "evidence": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["evidence_id", "source_url", "local_path", "content_sha256", "captured_at", "source_version", "authority_class", "independence_group"], "properties": {"evidence_id": {"type": "string", "minLength": 1}, "source_url": {"type": "string", "minLength": 1}, "local_path": {"type": "string", "minLength": 1}, "content_sha256": {"$ref": "#/$defs/sha256"}, "captured_at": {"type": "string", "format": "date-time"}, "source_version": {"type": "string", "minLength": 1}, "authority_class": {"type": "string", "minLength": 1}, "independence_group": {"type": "string", "minLength": 1}}}},
+    "conflicts": {"type": "array", "items": {"type": "object"}},
+    "remaining_uncertainties": {"type": "array", "items": {"type": "object"}},
+    "rejected_evidence": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "invalidation_triggers": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "snapshot": {"type": "object", "additionalProperties": false, "required": ["path", "sha256"], "properties": {"path": {"type": "string", "minLength": 1}, "sha256": {"$ref": "#/$defs/sha256"}}}
+  }
+}

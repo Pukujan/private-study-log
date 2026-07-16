@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cortex.local/schemas/assurance/assurance-receipt.schema.json",
+  "title": "Cortex external assurance receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "receipt_id", "evaluation_id", "task_id", "run_id",
+    "issuer_id", "evaluator_id", "evaluator_family", "execution_contract_sha256",
+    "success_contract_sha256", "result_sha256", "evidence_manifest_sha256",
+    "overall_verdict", "replay_id", "evaluated_at", "expires_at", "key_id",
+    "signed_payload_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "receipt_id": {"type": "string", "pattern": "^ar_[0-9a-f]{32}$"},
+    "evaluation_id": {"type": "string", "minLength": 1},
+    "task_id": {"type": "string", "minLength": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "issuer_id": {"type": "string", "minLength": 1},
+    "evaluator_id": {"type": "string", "minLength": 1},
+    "evaluator_family": {"type": "string", "minLength": 1},
+    "execution_contract_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "success_contract_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "result_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "evidence_manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "overall_verdict": {"enum": ["PASS", "FAIL", "ABSTAIN", "UNRESOLVED", "ENVIRONMENT_UNAVAILABLE"]},
+    "replay_id": {"type": ["string", "null"], "minLength": 1},
+    "evaluated_at": {"type": "string", "format": "date-time"},
+    "expires_at": {"type": "string", "format": "date-time"},
+    "key_id": {"type": "string", "minLength": 1},
+    "signed_payload_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

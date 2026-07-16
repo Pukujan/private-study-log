@@ -1,0 +1,28 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Tasks</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="tasklist">
+      <div class="tasklist-head">TASKS</div>
+      <button class="task-item" data-id="1">Rotate telemetry keys</button>
+      <button class="task-item" data-id="2">Patch auth rate limiter</button>
+    </aside>
+    <main class="detail" id="detail">
+      <div class="empty-detail">Select a task to see its details.</div>
+    </main>
+  </div>
+  <script>
+    // Clicking a task reveals the detail pane -- the real bug class from 2026-07-07:
+    // the initial list looks fine; the DETAIL state is where layout breaks.
+    document.querySelectorAll('.task-item').forEach(function (b) {
+      b.addEventListener('click', function () {
+        document.getElementById('detail').innerHTML =
+          '<div class="detail-body"><h2>Task ' + b.dataset.id + '</h2>' +
+          '<p>Owner: ops. Schedule: daily. Last run: failed. Retry history spans ' +
+          'many lines of text that must remain readable inside the detail pane.</p></div>';
+      });
+    });
+  </script>
+</body></html>

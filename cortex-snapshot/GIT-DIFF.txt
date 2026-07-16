@@ -1,0 +1,12 @@
+diff --git a/external/pylint b/external/pylint
+--- a/external/pylint
++++ b/external/pylint
+@@ -1 +1 @@
+-Subproject commit c34905fd04151b663377932273a40be2b279834c
++Subproject commit c34905fd04151b663377932273a40be2b279834c-dirty
+diff --git a/external/sqlfluff b/external/sqlfluff
+--- a/external/sqlfluff
++++ b/external/sqlfluff
+@@ -1 +1 @@
+-Subproject commit 2a9e943f3f330c8c7105cdec4d8d269255d20d21
++Subproject commit 2a9e943f3f330c8c7105cdec4d8d269255d20d21-dirty

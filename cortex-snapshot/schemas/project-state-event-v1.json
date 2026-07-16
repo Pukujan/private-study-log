@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cortex.local/schemas/project-state-event-v1.json",
+  "title": "Cortex project state event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "event_id", "project_id", "run_id", "task_id",
+    "subject_id", "subject_type", "scope", "event_type",
+    "expected_prior_revision", "authority", "observed_at", "valid_from",
+    "expires_at", "appended_at", "lifecycle_state", "claims", "blockers",
+    "next_actions", "affected_document_ids", "affected_capability_ids",
+    "evidence_refs", "supersedes", "invalidates", "source"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "event_id": {"$ref": "#/$defs/id"},
+    "project_id": {"$ref": "#/$defs/id"},
+    "run_id": {"$ref": "#/$defs/id"},
+    "task_id": {"$ref": "#/$defs/id"},
+    "subject_id": {"$ref": "#/$defs/id"},
+    "subject_type": {
+      "enum": ["NORMATIVE", "OPERATIONAL", "DECISION", "RUNTIME", "CAPABILITY"]
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": {"enum": ["PROJECT", "RUN", "TASK", "COMPONENT"]},
+        "id": {"$ref": "#/$defs/id"}
+      }
+    },
+    "event_type": {
+      "enum": ["STATE_ASSERTED", "STATE_SUPERSEDED", "STATE_INVALIDATED", "STATE_RESOLVED"]
+    },
+    "expected_prior_revision": {"type": "integer", "minimum": 0},
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actor_id", "authority_class", "authority_role"],
+      "properties": {
+        "actor_id": {"$ref": "#/$defs/id"},
+        "authority_class": {
+          "enum": [
+            "HUMAN_OWNER", "DOMAIN_EXPERT", "COMPONENT_OWNER", "RUNTIME",
+            "EXTERNAL_EVALUATOR", "AGENT"
+          ]
+        },
+        "authority_role": {"$ref": "#/$defs/id"}
+      }
+    },
+    "observed_at": {"type": "string", "format": "date-time"},
+    "valid_from": {"type": "string", "format": "date-time"},
+    "expires_at": {"type": ["string", "null"], "format": "date-time"},
+    "appended_at": {"type": "string", "format": "date-time"},
+    "lifecycle_state": {"enum": ["ACTIVE", "COMPLETED", "BLOCKED", "UNRESOLVED"]},
+    "claims": {"$ref": "#/$defs/strings"},
+    "blockers": {"$ref": "#/$defs/strings"},
+    "next_actions": {"$ref": "#/$defs/strings"},
+    "affected_document_ids": {"$ref": "#/$defs/strings"},
+    "affected_capability_ids": {"$ref": "#/$defs/strings"},
+    "evidence_refs": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/evidence"}
+    },
+    "supersedes": {"$ref": "#/$defs/strings"},
+    "invalidates": {"$ref": "#/$defs/strings"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "commit", "config_version"],
+      "properties": {
+        "repository": {"$ref": "#/$defs/id"},
+        "commit": {"$ref": "#/$defs/id"},
+        "config_version": {"$ref": "#/$defs/id"}
+      }
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1},
+    "strings": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id", "uri", "sha256", "authority_class",
+        "independence_class", "provenance_class", "observed_at", "expires_at"
+      ],
+      "properties": {
+        "evidence_id": {"$ref": "#/$defs/id"},
+        "uri": {"$ref": "#/$defs/id"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "authority_class": {
+          "enum": [
+            "SIGNED_RECEIPT", "DETERMINISTIC_CHECK", "EXTERNAL_OBSERVATION",
+            "HUMAN_ATTESTATION", "DOCUMENTARY"
+          ]
+        },
+        "independence_class": {
+          "enum": ["INDEPENDENT", "SAME_PROCESS", "SELF_REPORTED", "HUMAN"]
+        },
+        "provenance_class": {
+          "enum": ["CONTENT_ADDRESSED", "SIGNED", "ATTESTED", "OBSERVED"]
+        },
+        "observed_at": {"type": "string", "format": "date-time"},
+        "expires_at": {"type": ["string", "null"], "format": "date-time"}
+      }
+    }
+  }
+}

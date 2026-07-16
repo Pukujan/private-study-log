@@ -1,0 +1,1038 @@
+{
+  "cortex_core\\agent_runner.py": [
+    "__future__",
+    "pathlib",
+    "typing",
+    "cortex_core.llm_parse",
+    "cortex_core.mcp",
+    "cortex_core.mcp",
+    "cortex_core.phase_runtime",
+    "cortex_core.judge",
+    "cortex_core.research",
+    "cortex_core.mcp",
+    "cortex_core.mcp",
+    "cortex_core.mcp",
+    "cortex_core.mcp",
+    "cortex_core.mcp"
+  ],
+  "cortex_core\\app_contract.py": [
+    "__future__",
+    "dataclasses",
+    "typing"
+  ],
+  "cortex_core\\app_gates.py": [
+    "__future__",
+    "dataclasses",
+    "pathlib",
+    "typing",
+    "app_contract"
+  ],
+  "cortex_core\\arbitrate.py": [
+    "__future__",
+    "dataclasses",
+    "datetime",
+    "enum",
+    "pathlib",
+    "typing",
+    "evaluator"
+  ],
+  "cortex_core\\arbitration_rigor.py": [
+    "__future__",
+    "dataclasses",
+    "datetime",
+    "pathlib",
+    "typing",
+    "calibration",
+    "config",
+    "config"
+  ],
+  "cortex_core\\assurance_contracts.py": [
+    "__future__",
+    "typing"
+  ],
+  "cortex_core\\assurance_evaluator.py": [
+    "__future__",
+    "datetime",
+    "pathlib",
+    "typing",
+    "cortex_core.assurance_contracts",
+    "cortex_core.assurance_result",
+    "cryptography.hazmat.primitives.asymmetric.ed25519"
+  ],
+  "cortex_core\\assurance_result.py": [
+    "__future__",
+    "typing"
+  ],
+  "cortex_core\\attestation.py": [
+    "__future__",
+    "datetime",
+    "pathlib",
+    "cortex_core.config"
+  ],
+  "cortex_core\\audit.py": [
+    "__future__",
+    "datetime",
+    "pathlib",
+    "typing",
+    "config",
+    "version",
+    "cortex_core"
+  ],
+  "cortex_core\\authz.py": [
+    "__future__",
+    "typing"
+  ],
+  "cortex_core\\bakeoff.py": [
+    "__future__",
+    "typing",
+    "llm_parse",
+    "state_engine",
+    "research",
+    "research"
+  ],
+  "cortex_core\\bakeoff_authoring.py": [
+    "__future__",
+    "typing",
+    "bakeoff_tasks",
+    "llm_parse",
+    "research"
+  ],
+  "cortex_core\\bakeoff_tasks.py": [
+    "__future__",
+    "typing"
+  ],
+  "cortex_core\\bench_seed.py": [
+    "__future__",
+    "pathlib",
+    "typing",
+    "cortex_core.search"
+  ],
+  "cortex_core\\bias.py": [
+    "__future__",
+    "dataclasses"
+  ],
+  "cortex_core\\browser_fetch.py": [
+    "__future__",
+    "urllib.parse",
+    "fetch",
+    "playwright.sync_api"
+  ],
+  "cortex_core\\build_skills.py": [
+    "__future__",
+    "dataclasses",
+    "pathlib",
+    "typing",
+    "app_contract",
+    "config",
+    "config"
+  ],
+  "cortex_core\\calibration.py": [
+    "__future__",
+    "dataclasses",
+    "datetime",
+    "pathlib",
+    "typing",
+    "config",
+    "evaluator"
+  ],
+  "cortex_core\\capability_router.py": [
+    "__future__",
+    "datetime",
+    "pathlib",
+    "typing",
+    "config"
+  ],
+  "cortex_core\\capacity.py": [
+    "__future__",
+    "pathlib",
+    "typing"
+  ],
+  "cortex_core\\case_authorship.py": [
+    "__future__",
+    "typing"
+  ],
+  "cortex_core\\catalog_reconcile.py": [
+    "__future__",
+    "datetime",
+    "pathlib",
+    "typing",
+    "cortex_core.config"
+  ],
+  "cortex_core\\closeout_reconcile.py": [
+    "__future__",
+    "datetime",
+    "pathlib",
+    "typing"
+  ],
+  "cortex_core\\codex_judge.py": [
+    "__future__",
+    "pathlib",
+    "config",
+    "evaluator",
+    "calibration"
+  ],
+  "cortex_core\\compressor.py": [
+    "__future__"
+  ],
+  "cortex_core\\config.py": [
+    "__future__",
+    "dataclasses",
+    "pathlib",
+    "typing"
+  ],
+  "cortex_core\\contract.py": [
+    "__future__",
+    "dataclasses",
+    "datetime",
+    "pathlib",
+    "typing",
+    "config",
+    "config",
+    "search"
+  ],
+  "cortex_core\\decomposer.py": [
+    "__future__",
+    "fnmatch",
+    "typing"
+  ],
+  "cortex_core\\deep_audit.py": [
+    "__future__",
+    "dataclasses",
+    "pathlib",
+    "cortex_core.faithfulness",
+    "cortex_core.config"
+  ],
+  "cortex_core\\deep_research.py": [
+    "__future__",
+    "pathlib",
+    "typing",
+    "cortex_core.config",
+    "cortex_core.research",
+    "cortex_core.faithfulness"
+  ],
+  "cortex_core\\director.py": [
+    "__future__",
+    "dataclasses",
+    "pathlib",
+    "typing",
+    "cortex_core",
+    "cortex_core",
+    "cortex_core",
+    "cortex_core",
+    "cortex_core",
+    "cortex_core.config",
+    "cortex_core",
+    "cortex_core",
+    "cortex_core",
+    "cortex_core.judge",
+    "cortex_core.research"
+  ],
+  "cortex_core\\distill.py": [
+    "__future__"
+  ],
+  "cortex_core\\doctor.py": [
+    "__future__",
+    "pathlib",
+    "typing",
+    "config",
+    "retrieval_health",
+    "project_state_cli"
+  ],
+  "cortex_core\\driver_preflight.py": [
+    "__future__",
+    "datetime",
+    "typing",
+    "cortex_core.assurance_contracts",
+    "cortex_core.assurance_evaluator"
+  ],
+  "cortex_core\\eval.py": [
+    "__future__",
+    "pathlib",
+    "typing",
+    "config",
+    "search"
+  ],
+  "cortex_core\\evaluator.py": [
+    "__future__",
+    "dataclasses",
+    "enum",
+    "pathlib",
+    "typing",
+    "audit",
+    "judge"
+  ],
+  "cortex_core\\evidence_schema.py": [
+    "__future__",
+    "datetime",
+    "pathlib",
+    "typing"
+  ],
+  "cortex_core\\extract.py": [
+    "__future__",
+    "dataclasses",
+    "typing"
+  ],
+  "cortex_core\\faithfulness.py": [
+    "__future__",
+    "dataclasses",
+    "minicheck.minicheck"
+  ],
+  "cortex_core\\fanout.py": [
+    "__future__",
+    "concurrent.futures",
+    "dataclasses",
+    "pathlib",
+    "typing",
+    "cortex_core",
+    "cortex_core.app_contract",
+    "cortex_core.config",
+    "cortex_core"
+  ],
+  "cortex_core\\fetch.py": [
+    "__future__",
+    "html.parser",
+    "datetime",
+    "pathlib",
+    "typing",
+    "urllib.parse",
+    "urllib.request",
+    "config"
+  ],
+  "cortex_core\\fingerprint.py": [
+    "__future__",
+    "pathlib",
+    "typing"
+  ],
+  "cortex_core\\format_fairness.py": [
+    "__future__",
+    "dataclasses"
+  ],
+  "cortex_core\\freshness.py": [
+    "__future__",
+    "dataclasses",
+    "datetime",
+    "pathlib",
+    "typing",
+    "config",
+    "search",
+    "task_ledger"
+  ],
+  "cortex_core\\gap_ledger.py": [
+    "__future__",
+    "pathlib",
+    "typing",
+    "config",
+    "task_ledger"
+  ],
+  "cortex_core\\gating.py": [
+    "__future__",
+    "dataclasses"
+  ],
+  "cortex_core\\govern.py": [
+    "__future__",
+    "pathlib",
+    "cortex_core.config",
+    "cortex_core.model_driver",
+    "cortex_core.plane2_driver"
+  ],
+  "cortex_core\\graded_eval.py": [
+    "__future__",
+    "pathlib",
+    "typing",
+    "config",
+    "search"
+  ],
+  "cortex_core\\handoff.py": [
+    "__future__",
+    "dataclasses",
+    "datetime",
+    "typing"
+  ],
+  "cortex_core\\http_server.py": [
+    "__future__",
+    "authz",
+    "config",
+    "mcp.server.transport_security",
+    "starlette.responses",
+    "starlette.routing",
+    "mcp",
+    "starlette.responses",
+    "cortex_core",
+    "starlette.responses",
+    "cortex_core.keys"
+  ],
+  "cortex_core\\hybrid_build.py": [
+    "__future__",
+    "dataclasses",
+    "pathlib",
+    "typing",
+    "cortex_core",
+    "cortex_core",
+    "cortex_core",
+    "cortex_core",
+    "cortex_core",
+    "cortex_core",
+    "cortex_core.state_engine",
+    "cortex_core.config"
+  ],
+  "cortex_core\\ingest.py": [
+    "__future__",
+    "datetime",
+    "pathlib",
+    "config",
+    "fetch",
+    "search"
+  ],
+  "cortex_core\\integrations.py": [
+    "__future__",
+    "contextlib"
+  ],
+  "cortex_core\\judge.py": [
+    "__future__",
+    "pathlib",
+    "typing",
+    "audit",
+    "evaluator",
+    "model_dispatch",
+    "llm_parse"
+  ],
+  "cortex_core\\kedb_incident.py": [
+    "__future__",
+    "pathlib",
+    "typing"
+  ],
+  "cortex_core\\keys.py": [
+    "__future__",
+    "datetime",
+    "pathlib",
+    "cortex_core.authz",
+    "cortex_core.config",
+    "cortex_core.config"
+  ],
+  "cortex_core\\keys_cli.py": [
+    "__future__",
+    "cortex_core"
+  ],
+  "cortex_core\\keys_dashboard.py": [
+    "__future__",
+    "pathlib",
+    "authz",
+    "config",
+    "starlette.applications",
+    "starlette.responses",
+    "starlette.routing"
+  ],
+  "cortex_core\\knowledge.py": [
+    "__future__",
+    "dataclasses",
+    "datetime",
+    "pathlib",
+    "typing",
+    "config",
+    "search"
+  ],
+  "cortex_core\\lanes.py": [
+    "__future__",
+    "metrics"
+  ],
+  "cortex_core\\langfuse_sink.py": [
+    "__future__",
+    "datetime",
+    "pathlib",
+    "typing"
+  ],
+  "cortex_core\\llm_parse.py": [
+    "__future__"
+  ],
+  "cortex_core\\mcp.py": [
+    "__future__",
+    "datetime",
+    "pathlib",
+    "typing",
+    "mcp.server.fastmcp",
+    "audit",
+    "authz",
+    "config",
+    "doctor",
+    "fetch",
+    "search",
+    "state_engine",
+    "write_policy",
+    "cortex_core.attestation",
+    "cortex_core.onboarding",
+    "cortex_core.onboarding",
+    "cortex_core",
+    "cortex_core",
+    "cortex_core",
+    "cortex_core",
+    "model_catalog",
+    "fingerprint",
+    "state_engine",
+    "phase_runtime",
+    "phase_runtime",
+    "phase_runtime",
+    "phase_runtime",
+    "phase_runtime",
+    "knowledge",
+    "project_state",
+    "project_state_store",
+    "cortex_core",
+    "cortex_core",
+    "cortex_core",
+    "cortex_core.keys",
+    "model_catalog",
+    "capability_router",
+    "judge",
+    "agent_runner",
+    "driver_preflight",
+    "assurance_evaluator",
+    "phase_runtime",
+    "phase_runtime",
+    "research_sufficiency",
+    "research_sufficiency",
+    "research_sufficiency",
+    "cortex_core.workspace_scaffold",
+    "cortex_core.workspace_sweep",
+    "rubric_gate"
+  ],
+  "cortex_core\\mcp_door.py": [
+    "__future__"
+  ],
+  "cortex_core\\memory.py": [
+    "__future__",
+    "dataclasses",
+    "functools",
+    "pathlib",
+    "typing",
+    "config",
+    "mem0",
+    "write_policy"
+  ],
+  "cortex_core\\metrics.py": [
+    "__future__"
+  ],
+  "cortex_core\\mission_driver.py": [
+    "__future__",
+    "concurrent.futures",
+    "dataclasses",
+    "pathlib",
+    "typing",
+    "cortex_core",
+    "cortex_core.state_engine",
+    "cortex_core"
+  ],
+  "cortex_core\\model_catalog.py": [
+    "__future__",
+    "datetime",
+    "pathlib",
+    "typing",
+    "capacity",
+    "model_dispatch",
+    "model_tiers"
+  ],
+  "cortex_core\\model_dispatch.py": [
+    "__future__",
+    "contextlib",
+    "dataclasses",
+    "pathlib",
+    "typing",
+    "config",
+    "datetime"
+  ],
+  "cortex_core\\model_driver.py": [
+    "__future__",
+    "pathlib",
+    "typing"
+  ],
+  "cortex_core\\model_probe.py": [
+    "__future__",
+    "dataclasses",
+    "pathlib",
+    "typing",
+    "config"
+  ],
+  "cortex_core\\model_tiers.py": [
+    "__future__"
+  ],
+  "cortex_core\\ocr_tts.py": [
+    "__future__",
+    "dataclasses",
+    "datetime",
+    "pathlib",
+    "config",
+    "judge",
+    "judge",
+    "paddleocr",
+    "PIL",
+    "PIL",
+    "search"
+  ],
+  "cortex_core\\onboarding.py": [
+    "__future__",
+    "typing",
+    "cortex_core.patterns",
+    "cortex_core"
+  ],
+  "cortex_core\\ontology.py": [
+    "__future__",
+    "dataclasses",
+    "datetime",
+    "pathlib",
+    "typing",
+    "config",
+    "task_ledger"
+  ],
+  "cortex_core\\ontology_seed.py": [
+    "__future__",
+    "pathlib",
+    "typing",
+    "config"
+  ],
+  "cortex_core\\oracle_crossval.py": [
+    "__future__",
+    "dataclasses",
+    "pathlib",
+    "cortex_core",
+    "cortex_core",
+    "evals.objective_datetime_correctness.checker_datetime",
+    "evals.objective_datetime_correctness.fixtures_datetime",
+    "evals.objective_regex_correctness.checker_regex",
+    "evals.objective_regex_correctness.fixtures_regex",
+    "evals.objective_ledger_balances.checker_ledger",
+    "evals.objective_ledger_balances.fixtures_ledger",
+    "evals.objective_invoice_reconciliation.checker_invoice",
+    "evals.objective_invoice_reconciliation.fixtures_invoice",
+    "evals.objective_coding.holdout_gaming"
+  ],
+  "cortex_core\\oracle_report.py": [
+    "__future__"
+  ],
+  "cortex_core\\orchestrator.py": [
+    "__future__",
+    "concurrent.futures",
+    "dataclasses",
+    "typing",
+    "cortex_core",
+    "cortex_core",
+    "cortex_core"
+  ],
+  "cortex_core\\otel.py": [
+    "__future__",
+    "contextlib",
+    "pathlib",
+    "typing",
+    "opentelemetry.sdk.resources",
+    "opentelemetry.sdk.trace",
+    "opentelemetry.sdk.trace.export",
+    "opentelemetry.exporter.otlp.proto.http.trace_exporter"
+  ],
+  "cortex_core\\output_contract.py": [
+    "__future__",
+    "datetime",
+    "pathlib",
+    "typing",
+    "cortex_core.config",
+    "cortex_core.config"
+  ],
+  "cortex_core\\packs.py": [
+    "__future__",
+    "dataclasses",
+    "pathlib",
+    "typing",
+    "config",
+    "knowledge",
+    "search",
+    "config"
+  ],
+  "cortex_core\\pack_experiment.py": [
+    "__future__",
+    "dataclasses",
+    "datetime",
+    "pathlib",
+    "typing",
+    "app_contract",
+    "app_gates",
+    "config"
+  ],
+  "cortex_core\\patterns.py": [
+    "__future__",
+    "dataclasses",
+    "datetime",
+    "pathlib",
+    "typing",
+    "config",
+    "contract",
+    "config"
+  ],
+  "cortex_core\\phase_runtime.py": [
+    "__future__",
+    "datetime",
+    "pathlib",
+    "typing"
+  ],
+  "cortex_core\\plane2_driver.py": [
+    "__future__",
+    "typing",
+    "cortex_core.state_engine"
+  ],
+  "cortex_core\\playbooks.py": [
+    "__future__",
+    "dataclasses",
+    "datetime",
+    "pathlib",
+    "typing",
+    "urllib.parse",
+    "config",
+    "config"
+  ],
+  "cortex_core\\plugin.py": [
+    "__future__",
+    "pathlib",
+    "typing",
+    "audit",
+    "config",
+    "memory"
+  ],
+  "cortex_core\\project_state.py": [
+    "__future__",
+    "collections",
+    "copy",
+    "datetime",
+    "pathlib",
+    "typing"
+  ],
+  "cortex_core\\project_state_cli.py": [
+    "__future__",
+    "dataclasses",
+    "pathlib",
+    "typing",
+    "config",
+    "project_state_store"
+  ],
+  "cortex_core\\project_state_ontology.py": [
+    "__future__",
+    "pathlib",
+    "typing",
+    "config",
+    "ontology",
+    "project_state"
+  ],
+  "cortex_core\\project_state_projection.py": [
+    "__future__",
+    "datetime",
+    "typing"
+  ],
+  "cortex_core\\project_state_store.py": [
+    "__future__",
+    "dataclasses",
+    "datetime",
+    "pathlib",
+    "typing",
+    "task_ledger",
+    "project_state_ontology",
+    "project_state",
+    "project_state_projection",
+    "project_state",
+    "project_state_ontology"
+  ],
+  "cortex_core\\promotion.py": [
+    "__future__",
+    "dataclasses",
+    "enum",
+    "promotion_state",
+    "evals.contamination",
+    "cortex_core.attestation"
+  ],
+  "cortex_core\\promotion_state.py": [
+    "__future__",
+    "enum",
+    "cortex_core.promotion",
+    "cortex_core.distill"
+  ],
+  "cortex_core\\provenance.py": [
+    "__future__"
+  ],
+  "cortex_core\\provenance_tiers.py": [
+    "__future__",
+    "typing"
+  ],
+  "cortex_core\\reaction.py": [
+    "__future__",
+    "dataclasses",
+    "pathlib",
+    "typing",
+    "cortex_core",
+    "cortex_core",
+    "cortex_core",
+    "cortex_core",
+    "cortex_core.config",
+    "cortex_core.config",
+    "cortex_core.judge",
+    "cortex_core.research"
+  ],
+  "cortex_core\\receipts.py": [
+    "__future__",
+    "pathlib",
+    "typing",
+    "cortex_core.config",
+    "cortex_core",
+    "cortex_core"
+  ],
+  "cortex_core\\registry.py": [
+    "__future__",
+    "dataclasses",
+    "pathlib",
+    "cortex_core.config",
+    "cortex_core.attestation",
+    "cortex_core.attestation",
+    "cortex_core",
+    "cortex_core"
+  ],
+  "cortex_core\\repo_audit.py": [
+    "__future__",
+    "dataclasses",
+    "pathlib",
+    "typing",
+    "cortex_core.config"
+  ],
+  "cortex_core\\research.py": [
+    "__future__",
+    "dataclasses",
+    "datetime",
+    "pathlib",
+    "typing",
+    "anthropic",
+    "config",
+    "fetch",
+    "knowledge",
+    "research_prompts",
+    "search",
+    "fetch",
+    "llm_parse",
+    "config"
+  ],
+  "cortex_core\\research_prompts.py": [
+    "__future__",
+    "typing"
+  ],
+  "cortex_core\\research_sufficiency.py": [
+    "__future__",
+    "datetime",
+    "pathlib",
+    "typing",
+    "urllib.parse",
+    "config",
+    "research_trust",
+    "research_trust",
+    "research_trust",
+    "research_trust"
+  ],
+  "cortex_core\\research_trust.py": [
+    "__future__",
+    "pathlib",
+    "typing",
+    "cryptography.hazmat.primitives.asymmetric.ed25519"
+  ],
+  "cortex_core\\research_v2_experimental.py": [
+    "__future__",
+    "dataclasses",
+    "datetime",
+    "pathlib",
+    "typing",
+    "search"
+  ],
+  "cortex_core\\response_bias.py": [
+    "__future__",
+    "dataclasses",
+    "pathlib",
+    "typing"
+  ],
+  "cortex_core\\response_bias_mcp.py": [
+    "__future__",
+    "pathlib",
+    "typing",
+    "mcp.server.fastmcp",
+    "cortex_core.response_bias"
+  ],
+  "cortex_core\\results_ledger.py": [
+    "__future__",
+    "pathlib",
+    "cortex_core.evidence_schema"
+  ],
+  "cortex_core\\retrieval_health.py": [
+    "__future__",
+    "dataclasses",
+    "search"
+  ],
+  "cortex_core\\rubric_gate.py": [
+    "__future__",
+    "dataclasses",
+    "pathlib",
+    "typing",
+    "config",
+    "state_engine",
+    "llm_parse",
+    "llm_parse",
+    "evals.rubrics.rubric_c_layer1",
+    "playwright.sync_api"
+  ],
+  "cortex_core\\runner.py": [
+    "__future__",
+    "dataclasses",
+    "extract",
+    "metrics"
+  ],
+  "cortex_core\\scorecard.py": [
+    "__future__",
+    "dataclasses",
+    "typing"
+  ],
+  "cortex_core\\scorecards.py": [
+    "__future__",
+    "dataclasses",
+    "pathlib",
+    "cortex_core.config"
+  ],
+  "cortex_core\\search.py": [
+    "__future__",
+    "dataclasses",
+    "datetime",
+    "pathlib",
+    "typing",
+    "config",
+    "project_state_store"
+  ],
+  "cortex_core\\self_learning.py": [
+    "__future__",
+    "pathlib",
+    "typing",
+    "audit",
+    "datetime",
+    "config"
+  ],
+  "cortex_core\\state_engine.py": [
+    "__future__",
+    "datetime",
+    "contextlib",
+    "fnmatch",
+    "typing",
+    "cortex_core",
+    "cortex_core.research_sufficiency",
+    "types",
+    "types",
+    "cortex_core"
+  ],
+  "cortex_core\\task_ledger.py": [
+    "__future__",
+    "datetime",
+    "pathlib",
+    "typing",
+    "config"
+  ],
+  "cortex_core\\telemetry.py": [
+    "__future__",
+    "pathlib",
+    "typing",
+    "cortex_core.config",
+    "cortex_core.config",
+    "cortex_core.output_contract",
+    "cortex_core.judge"
+  ],
+  "cortex_core\\theater_audit.py": [
+    "__future__",
+    "dataclasses",
+    "enum",
+    "pathlib",
+    "typing",
+    "closeout_reconcile",
+    "evaluator"
+  ],
+  "cortex_core\\tool_surface.py": [
+    "__future__",
+    "typing",
+    "mcp",
+    "mcp",
+    "state_engine"
+  ],
+  "cortex_core\\trace_capture.py": [
+    "__future__",
+    "dataclasses",
+    "pathlib",
+    "typing",
+    "cortex_core.config",
+    "cortex_core",
+    "cortex_core"
+  ],
+  "cortex_core\\trace_redaction.py": [
+    "__future__",
+    "pathlib",
+    "typing"
+  ],
+  "cortex_core\\update.py": [
+    "__future__",
+    "pathlib",
+    "typing",
+    "version"
+  ],
+  "cortex_core\\vague_build.py": [
+    "__future__",
+    "pathlib",
+    "typing",
+    "cortex_core",
+    "cortex_core.app_contract",
+    "cortex_core.model_dispatch",
+    "cortex_core.config",
+    "cortex_core",
+    "cortex_core"
+  ],
+  "cortex_core\\vector.py": [
+    "__future__",
+    "typing",
+    "model2vec"
+  ],
+  "cortex_core\\version.py": [
+    "__future__",
+    "pathlib"
+  ],
+  "cortex_core\\workspace_scaffold.py": [
+    "__future__",
+    "pathlib",
+    "typing"
+  ],
+  "cortex_core\\workspace_sweep.py": [
+    "__future__",
+    "datetime",
+    "pathlib",
+    "typing"
+  ],
+  "cortex_core\\write_policy.py": [
+    "__future__",
+    "dataclasses",
+    "pathlib",
+    "typing",
+    "audit"
+  ],
+  "cortex_core\\_indep_datetime.py": [
+    "__future__"
+  ],
+  "cortex_core\\_indep_regex.py": [
+    "__future__"
+  ],
+  "cortex_core\\__init__.py": [
+    "audit",
+    "config",
+    "doctor",
+    "fetch",
+    "handoff",
+    "plugin",
+    "search"
+  ],
+  "cortex_core\\__main__.py": [
+    "audit",
+    "audit",
+    "doctor",
+    "fetch",
+    "search",
+    "update"
+  ]
+}

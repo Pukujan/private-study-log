@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cortex.local/schemas/routing/model-capabilities.schema.json",
+  "title": "Exact-model capability qualification cards",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "models"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "models": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["family", "qualified_tier", "capabilities", "qualification_evidence", "qualified_at", "expires_at"],
+        "properties": {
+          "family": {"type": "string", "minLength": 1},
+          "qualified_tier": {"enum": ["weak", "medium", "upper-mid", "strong"]},
+          "capabilities": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+          "qualification_evidence": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+          "qualified_at": {"type": "string", "format": "date-time"},
+          "expires_at": {"type": "string", "format": "date-time"}
+        }
+      }
+    }
+  }
+}

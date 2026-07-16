@@ -1,0 +1,44 @@
+# Phase 2 vector-leg demonstration set (gates 2.2/2.3) -- NOT the regression
+# gate (that stays `tests/golden_queries.yaml`, which is BM25-saturated at
+# recall@5=1.0 and has no headroom to show a dense-retrieval gain).
+#
+# These are HARD semantic/paraphrase queries: everyday phrasing deliberately
+# chosen to share little or no vocabulary with the target doc, so lexical BM25
+# is stressed and any dense-retrieval benefit becomes visible. Each target is a
+# TOPICALLY-UNIQUE doc in the corpus (no near-duplicate contract/review/closeout
+# siblings competing for the same answer), so single-relevant-doc recall is not
+# muddied by the corpus's many closely-related fix docs.
+#
+# HONESTY CAVEATS (do not remove):
+# - Agent-authored, NOT human-reviewed. The correct-doc labels were chosen by
+#   content ("which doc SHOULD answer this"), independent of what either engine
+#   returns -- but this is still one agent grading a feature the same agent
+#   built. Treat results as a directional demonstration, not a closed gate.
+# - The feature flag stays OFF by default regardless of these numbers. Flipping
+#   the vector leg on by default is a human-review decision, gated on a
+#   human-validated hard-query set, not on this file alone.
+
+queries:
+  - query: "what changed between the old and the newer version of this workspace scaffold"
+    expected_doc: "docs/cortex-1/v1-v2-comparison.md"
+    category: hard_semantic
+
+  - query: "guidance on when to reach for a more capable model versus a cheaper one and how much thinking to allow"
+    expected_doc: "docs/research/claude-model-effort-selection.md"
+    category: hard_semantic
+
+  - query: "tracking how agent tasks move across a board and which numbers show throughput"
+    expected_doc: "docs/research/kanban-reporting-agent-tasks.md"
+    category: hard_semantic
+
+  - query: "how to tell whether an automated assistant's answers can be trusted once it is running for real users"
+    expected_doc: "docs/research/production-evaluation-framework.md"
+    category: hard_semantic
+
+  - query: "the overall design of the Hermes system and how its parts fit together"
+    expected_doc: "docs/hermes/ARCHITECTURE.md"
+    category: hard_semantic
+
+  - query: "keeping software written mostly by machines dependable, with spending limits on failures and a gradual release"
+    expected_doc: "docs/research/stability-reliability-ai-first-development.md"
+    category: hard_semantic

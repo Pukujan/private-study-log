@@ -1,0 +1,93 @@
+# Multi-hop graded query set (GAP G2 — docs/ONTOLOGY-RETRIEVAL-SPEC.md §4).
+#
+# ***DRAFT — AGENT-AUTHORED, PENDING HUMAN REVIEW*** (same status as
+# tests/graded_queries.yaml). These are queries whose answer lives in a document
+# that is *connected to* the document/entity the query names by a living-ontology
+# edge (the doc->doc `references` citation graph), and phrased in the connected
+# document's own vocabulary — i.e. the queries a flat BM25/vector search is prone
+# to miss because it never follows the graph edge.
+#
+# Construction rule (so the set genuinely exercises the ontology hop, not luck):
+#   - The query NAMES a source entity (a doc, by its stem) so ontology resolution
+#     fires — but the ANSWER lives in a DIFFERENT, graph-connected document.
+#   - The single grade-3 relevant doc is the connected ANSWER document, NOT the
+#     named one. (Scoring the named doc as relevant would let BM25 — which finds
+#     the named doc trivially — score well without ever making the hop, masking
+#     the very signal we are measuring.)
+#   - Each `chunk` marker was verified to literally appear in its target doc at
+#     authoring time.
+#
+# Schema is identical to tests/graded_queries.yaml:
+#   query / category / relevant: [{doc, grade, chunk?}]
+#   category: multihop (all) — a label, the metric math is unchanged.
+
+queries:
+  - query: "in the cortex ARCHITECTURE, which remote host is designated for running containers and heavy compute jobs"
+    category: multihop
+    relevant:
+      - doc: "docs/COMPUTE-INFRA.md"
+        grade: 3
+        chunk: "gravebuster"
+
+  - query: "per the ARCHITECTURE overview, what is the allowlisted proxy lane used for cheap and bulk model calls"
+    category: multihop
+    relevant:
+      - doc: "docs/MODEL-ROLES.md"
+        grade: 3
+        chunk: "9router"
+
+  - query: "the ARCHITECTURE describes ownership and authentication — how many distinct planes does the system separate reads and writes into"
+    category: multihop
+    relevant:
+      - doc: "docs/CORTEX-ROUTES-AND-OWNERSHIP.md"
+        grade: 3
+        chunk: "two planes"
+
+  - query: "from the ARCHITECTURE, what registry of candidate sources shapes what deep research asks a frontier model for"
+    category: multihop
+    relevant:
+      - doc: "docs/DEEP-RESEARCH-DESIGN.md"
+        grade: 3
+        chunk: "seed-source registry"
+
+  - query: "the PHASE-GATES tracker cites the vector-leg decision — which embedded database extension was chosen to store the dense vectors"
+    category: multihop
+    relevant:
+      - doc: "docs/ADR-0001-VECTOR-LEG.md"
+        grade: 3
+        chunk: "sqlite-vec"
+
+  - query: "PHASE-GATES references the scorecard schema — what fallback mechanism handles a model with no data for a given task type"
+    category: multihop
+    relevant:
+      - doc: "docs/SLI-SCORECARD-SCHEMA.md"
+        grade: 3
+        chunk: "backoff"
+
+  - query: "the BUILD-PLAN process for a reviewer taking an isolated checkout of the repo before starting a review"
+    category: multihop
+    relevant:
+      - doc: "docs/REVIEW-PROVENANCE-PREFLIGHT.md"
+        grade: 3
+        chunk: "worktree"
+
+  - query: "BUILD-PLAN points at the loop test report — what recurring self-improvement cycle does that report evaluate"
+    category: multihop
+    relevant:
+      - doc: "docs/ROADMAP.md"
+        grade: 3
+        chunk: "self-learning loop"
+
+  - query: "EVAL-DESIGN-PHASE2 links the system architecture — which subsystem covers the gated, contract-checked write path"
+    category: multihop
+    relevant:
+      - doc: "docs/ARCHITECTURE.md"
+        grade: 3
+        chunk: "verified write path"
+
+  - query: "the ADR on the vector leg cites the gate tracker — at which retrieval gate did BM25 plus vector RRF ship default-on"
+    category: multihop
+    relevant:
+      - doc: "docs/PHASE-GATES.md"
+        grade: 3
+        chunk: "gate 2.3"

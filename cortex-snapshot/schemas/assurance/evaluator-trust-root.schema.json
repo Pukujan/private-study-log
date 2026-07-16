@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cortex.local/schemas/assurance/evaluator-trust-root.schema.json",
+  "title": "Cortex external evaluator public trust root",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "keys"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "keys": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["public_key", "issuer_id", "evaluator_id", "evaluator_family", "allowed_kinds", "not_before", "not_after", "revoked"],
+        "properties": {
+          "public_key": {"type": "string", "minLength": 1},
+          "issuer_id": {"type": "string", "minLength": 1},
+          "evaluator_id": {"type": "string", "minLength": 1},
+          "evaluator_family": {"type": "string", "minLength": 1},
+          "allowed_kinds": {
+            "type": "array", "minItems": 1, "uniqueItems": true,
+            "items": {"enum": ["ASSURANCE_RESULT", "PREFLIGHT_OBSERVATION"]}
+          },
+          "not_before": {"type": "string", "format": "date-time"},
+          "not_after": {"type": "string", "format": "date-time"},
+          "revoked": {"type": "boolean"}
+        }
+      }
+    }
+  }
+}

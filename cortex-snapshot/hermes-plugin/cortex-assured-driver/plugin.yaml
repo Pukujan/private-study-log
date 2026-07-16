@@ -1,0 +1,3 @@
+name: cortex-assured-driver
+version: 1.0.0
+description: "Fail-closed Hermes hooks for Cortex assured runs."

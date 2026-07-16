@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cortex.local/schemas/research/source-authority.schema.json",
+  "title": "Externally signed source authority and independence classification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "source_id", "url_origin", "authority_class", "independence_group", "issuer_id", "valid_from", "expires_at"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "source_id": {"type": "string", "minLength": 1},
+    "url_origin": {"type": "string", "pattern": "^https?://[^/]+$"},
+    "authority_class": {"type": "string", "minLength": 1},
+    "independence_group": {"type": "string", "minLength": 1},
+    "issuer_id": {"type": "string", "minLength": 1},
+    "valid_from": {"type": "string", "format": "date-time"},
+    "expires_at": {"type": "string", "format": "date-time"}
+  }
+}

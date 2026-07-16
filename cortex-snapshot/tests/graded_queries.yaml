@@ -1,0 +1,169 @@
+# Phase 2 Layer-A graded / multi-relevant query set (docs/EVAL-DESIGN-PHASE2.md).
+#
+# ***DRAFT — AGENT-AUTHORED, PENDING HUMAN REVIEW.*** These labels (which docs
+# are relevant, their grades, the answering-chunk markers) were drafted by an
+# agent and are the exact thing that needs a ~20-minute human pass to break the
+# circular-validation loop. Do not treat the grades as ground truth until
+# reviewed. Every `chunk` marker was verified to literally appear in its target
+# doc at draft time (a build step greps for it), but "is this the RIGHT chunk /
+# the RIGHT grade" is the human judgment call.
+#
+# Schema:
+#   query:    the search query
+#   category: and | natural_language | hard_semantic | negative
+#   relevant: list of {doc, grade, chunk?}  (empty [] for negatives)
+#     grade:  3 = canonical/best answer, 2 = strongly relevant, 1 = marginal/tangential
+#     chunk:  optional distinctive substring that the answering chunk must contain
+#             (drives chunk-level recall@k / MRR — the metric sensitive to 2.4/2.6)
+#
+# Grades to review carefully: the "multiple docs relevant" cases (esp. the Hermes
+# design query) are where binary labels failed — see docs/EVAL-DESIGN-PHASE2.md §2.
+
+queries:
+  # --- AND-friendly multi-term (BM25 is strong here) ---
+  - query: "NAT64 well-known prefix embedded IPv4"
+    category: and
+    relevant:
+      - doc: "reviewed/ssrf-r1-pinning-fix-contract-2026-07-03.md"
+        grade: 3
+        chunk: "NAT64"
+      - doc: "reviewed/ssrf-r1-r2-pinning-fix-review-2026-07-04.md"
+        grade: 2
+        chunk: "NAT64"
+
+  - query: "sqlite-vec Mozilla Builders vector extension decision"
+    category: and
+    relevant:
+      - doc: "docs/ADR-0001-VECTOR-LEG.md"
+        grade: 3
+        chunk: "sqlite-vec"
+      - doc: "docs/BUILD-PLAN.md"
+        grade: 2
+        chunk: "actively maintained"
+
+  - query: "PyYAML safe_load safe_dump collection catalog corruption"
+    category: and
+    relevant:
+      - doc: "reviewed/phase0-tier0-fix-contract-2026-07-03.md"
+        grade: 3
+        chunk: "safe_load"
+
+  - query: "MCP tool annotations 2025-03-26 readOnlyHint outputSchema"
+    category: and
+    relevant:
+      # Human review (#4 caveat): no dedicated MCP spec doc exists in the corpus;
+      # BUILD-PLAN holds the canonical corrected facts (annotations 2025-03-26,
+      # outputSchema 2025-06-18 -- the KE-10/11 correction), so it is grade 3 and
+      # the review that raised the finding drops to grade 2.
+      - doc: "docs/BUILD-PLAN.md"
+        grade: 3
+        chunk: "readOnlyHint"
+      - doc: "reviewed/opus-deep-review-2026-07-04.md"
+        grade: 2
+        chunk: "2025-03-26"
+
+  - query: "difference between cortex v1 and v2 scaffold"
+    category: and
+    relevant:
+      - doc: "docs/cortex-1/v1-v2-comparison.md"
+        grade: 3
+        chunk: "v2"
+
+  - query: "IP pinning DNS rebinding TOCTOU connect-time validated address"
+    category: and
+    relevant:
+      - doc: "reviewed/ssrf-r1-r2-pinning-fix-review-2026-07-04.md"
+        grade: 3
+        chunk: "rebinding"
+      - doc: "reviewed/ssrf-r1-pinning-fix-contract-2026-07-03.md"
+        grade: 2
+        chunk: "pinning"
+
+  # --- natural-language questions ---
+  - query: "what happens when a review agent gets a stale worktree"
+    category: natural_language
+    relevant:
+      - doc: "docs/REVIEW-PROVENANCE-PREFLIGHT.md"
+        grade: 3
+        chunk: "worktree"
+
+  - query: "how does cortex avoid re-hashing the whole corpus on every search"
+    category: natural_language
+    relevant:
+      - doc: "reviewed/phase0-ke-fixes-review-2026-07-04.md"
+        grade: 3
+        chunk: "stat"
+
+  - query: "how are closeouts kept from overwriting each other in the same second"
+    category: natural_language
+    relevant:
+      - doc: "reviewed/phase0-ke-fixes-contract-2026-07-04.md"
+        grade: 3
+        chunk: "UUIDv7"
+
+  # --- hard semantic / paraphrase (query avoids the doc's vocabulary) ---
+  - query: "what changed between the old and the newer version of this workspace scaffold"
+    category: hard_semantic
+    relevant:
+      - doc: "docs/cortex-1/v1-v2-comparison.md"
+        grade: 3
+        chunk: "v2"
+
+  - query: "guidance on when to reach for a more capable model versus a cheaper one and how much thinking to allow"
+    category: hard_semantic
+    relevant:
+      - doc: "docs/research/claude-model-effort-selection.md"
+        grade: 3
+        chunk: "effort"
+
+  - query: "tracking how agent tasks move across a board and which numbers show throughput"
+    category: hard_semantic
+    relevant:
+      - doc: "docs/research/kanban-reporting-agent-tasks.md"
+        grade: 3
+        chunk: "flow"
+
+  - query: "keeping software written mostly by machines dependable, with spending limits on failures and a gradual release"
+    category: hard_semantic
+    relevant:
+      - doc: "docs/research/stability-reliability-ai-first-development.md"
+        grade: 3
+        chunk: "error budget"
+
+  - query: "stopping a malicious link from making the fetcher reach internal servers"
+    category: hard_semantic
+    relevant:
+      - doc: "reviewed/ssrf-r1-pinning-fix-contract-2026-07-03.md"
+        grade: 3
+        chunk: "SSRF"
+      - doc: "reviewed/ssrf-r1-r2-pinning-fix-review-2026-07-04.md"
+        grade: 2
+        chunk: "SSRF"
+
+  # --- the multi-relevant demonstration (the query-#5 Hermes case) ---
+  # This is the poster child for graded/multi-relevant labels: ARCHITECTURE.md is
+  # the canonical answer, but the long research docs genuinely discuss the design
+  # too. Under binary single-doc labels the vector leg looked like it "regressed"
+  # this query; graded labels let a differently-valid doc earn partial credit.
+  - query: "the overall design of the Hermes system and how its parts fit together"
+    category: hard_semantic
+    relevant:
+      - doc: "docs/hermes/ARCHITECTURE.md"
+        grade: 3
+        chunk: "layers"
+      - doc: "docs/cortex-1/hermes-auto-by-fable.md"
+        grade: 1
+      - doc: "inbox/hermes-research-harness-gap-analysis.md"
+        grade: 1
+
+  # --- negatives (correct answer: nothing) ---
+  # Opaque sentinels, not natural-language gibberish -- see golden_queries.yaml's
+  # negative section for why (a closeout quoting "unicorn rainbow ..." polluted
+  # the corpus and broke the negatives). Never quote these in an indexed doc.
+  - query: "qqzznomatchqqz44120vv"
+    category: negative
+    relevant: []
+
+  - query: "xxvoidtokenxx70931zz"
+    category: negative
+    relevant: []

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cortex.local/schemas/research/sufficiency-receipt.schema.json",
+  "title": "Server-stored research sufficiency receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["receipt_id", "schema_version", "run_id", "task_id", "research_task_id", "decision_id", "proposal_sha256", "policy_sha256", "mechanical_assessment", "attestation_sha256s", "outcome", "unlocked_work", "remaining_uncertainty", "issued_at", "expires_at", "invalidation_triggers"],
+  "properties": {
+    "receipt_id": {"type": "string", "pattern": "^rs_[0-9a-f]{24}$"}, "schema_version": {"const": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "task_id": {"type": "string", "minLength": 1}, "research_task_id": {"type": "string", "minLength": 1},
+    "decision_id": {"type": "string", "minLength": 1}, "proposal_sha256": {"$ref": "#/$defs/sha256"}, "policy_sha256": {"$ref": "#/$defs/sha256"},
+    "mechanical_assessment": {"type": "object", "required": ["outcome", "gaps"]},
+    "attestation_sha256s": {"type": "array", "items": {"$ref": "#/$defs/sha256"}},
+    "outcome": {"enum": ["SUFFICIENT_FOR_DECISION", "UNRESOLVED", "ABSTAIN"]},
+    "unlocked_work": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "remaining_uncertainty": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "issued_at": {"type": "string", "format": "date-time"}, "expires_at": {"type": "string", "format": "date-time"},
+    "invalidation_triggers": {"type": "array", "items": {"type": "string", "minLength": 1}}
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

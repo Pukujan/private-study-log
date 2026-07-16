@@ -1,0 +1,13 @@
+/* Custom type + light theme so no Layer-1 slop tell fires -- this bug is Layer-2 only. */
+body { font-family: "IBM Plex Sans", sans-serif; margin: 0; background: #f5f6f8; color: #1a1c22; }
+.app { display: flex; flex-direction: row; height: 100vh; }
+.tasklist { width: 260px; display: flex; flex-direction: column; gap: 12px; padding: 16px; background: #fff; }
+.tasklist-head { font-size: 13px; letter-spacing: 1px; color: #6f757e; }
+.task-item { text-align: left; padding: 12px; border: 1px solid #e3e6ea; border-radius: 8px; background: #fff; cursor: pointer; }
+
+/* THE BUG (empty-detail / text-clipping class, 2026-07-07): the detail pane is a flex
+   COLUMN whose child is given flex:0 + max-height:0 + overflow:hidden, so injected
+   content collapses to nothing -- the initial list looks fine, the DETAIL state is blank. */
+.detail { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.empty-detail { flex: 1; display: flex; align-items: center; justify-content: center; color: #6f757e; }
+.detail-body { flex: 0; max-height: 0; overflow: hidden; padding: 0 24px; }

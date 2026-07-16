@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cortex.local/schemas/research/trust-root.schema.json",
+  "title": "Operator-owned Ed25519 research trust root",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "keys"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "keys": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object", "additionalProperties": false,
+        "required": ["public_key", "issuer_id", "allowed_kinds"],
+        "properties": {
+          "public_key": {"type": "string", "minLength": 40},
+          "issuer_id": {"type": "string", "minLength": 1},
+          "allowed_kinds": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["POLICY", "SOURCE_AUTHORITY", "SUBSTANTIVE_REVIEW", "HUMAN_APPROVAL"]}}
+        }
+      }
+    }
+  }
+}

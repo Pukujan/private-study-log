@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cortex.local/schemas/project-state-current-v1.json",
+  "title": "Cortex reduced project state v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "reducer_version", "project_id", "revision", "as_of",
+    "project_status", "event_log_sha256", "verified_authority_event_ids",
+    "verified_authority_event_ids_sha256", "state_sha256", "subjects", "history",
+    "documents", "capabilities", "unresolved"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "reducer_version": {"const": "cortex.project_state.reducer/1"},
+    "project_id": {"type": "string", "minLength": 1},
+    "revision": {"type": "integer", "minimum": 0},
+    "as_of": {"type": "string", "format": "date-time"},
+    "project_status": {"enum": ["RESOLVED", "UNRESOLVED"]},
+    "event_log_sha256": {"$ref": "#/$defs/hash"},
+    "verified_authority_event_ids": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "verified_authority_event_ids_sha256": {"$ref": "#/$defs/hash"},
+    "state_sha256": {"$ref": "#/$defs/hash"},
+    "documents": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/document"}
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/capability"}
+    },
+    "subjects": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/subject"}
+    },
+    "history": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/history"}
+    },
+    "unresolved": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "subject_key", "event_ids", "detail"],
+        "properties": {
+          "code": {"type": "string", "minLength": 1},
+          "subject_key": {"type": ["string", "null"]},
+          "event_ids": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "detail": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "evidence": {"$ref": "project-state-event-v1.json#/$defs/evidence"},
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actor_id", "authority_class", "authority_role"],
+      "properties": {
+        "actor_id": {"type": "string", "minLength": 1},
+        "authority_class": {
+          "enum": [
+            "HUMAN_OWNER", "DOMAIN_EXPERT", "COMPONENT_OWNER", "RUNTIME",
+            "EXTERNAL_EVALUATOR", "AGENT", "DETERMINISTIC_REDUCER"
+          ]
+        },
+        "authority_role": {"type": "string", "minLength": 1}
+      }
+    },
+    "scope": {"$ref": "project-state-event-v1.json#/properties/scope"},
+    "inventoryStatus": {
+      "enum": ["ACTIVE", "SUPERSEDED", "INVALIDATED", "EXPIRED", "UNRESOLVED"]
+    },
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "document_id", "status", "current", "source_event_ids", "last_event_id",
+        "replacement_event_ids", "invalidation_reasons"
+      ],
+      "properties": {
+        "document_id": {"type": "string", "minLength": 1},
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.?(?:/|$))(?!.*[\\\\<>:\"|?*#])(?!.*(?: |\\.)$).+$"
+        },
+        "status": {"$ref": "#/$defs/inventoryStatus"},
+        "current": {"type": "boolean"},
+        "source_event_ids": {
+          "type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true
+        },
+        "last_event_id": {"type": "string", "minLength": 1},
+        "replacement_event_ids": {
+          "type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true
+        },
+        "invalidation_reasons": {
+          "type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true
+        }
+      }
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capability_id", "status", "current", "source_event_ids", "last_event_id",
+        "replacement_event_ids", "invalidation_reasons"
+      ],
+      "properties": {
+        "capability_id": {"type": "string", "minLength": 1},
+        "status": {"$ref": "#/$defs/inventoryStatus"},
+        "current": {"type": "boolean"},
+        "source_event_ids": {
+          "type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true
+        },
+        "last_event_id": {"type": "string", "minLength": 1},
+        "replacement_event_ids": {
+          "type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true
+        },
+        "invalidation_reasons": {
+          "type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true
+        }
+      }
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "subject_key", "project_id", "subject_id", "subject_type", "scope",
+        "authority_role", "lifecycle_state", "authority_owner",
+        "last_accepted_event_id", "last_verification_at", "evidence_refs",
+        "freshness_deadline", "claims", "blockers", "next_actions",
+        "affected_document_ids", "affected_capability_ids", "candidate_event_ids",
+        "unresolved_reasons"
+      ],
+      "properties": {
+        "subject_key": {"$ref": "#/$defs/hash"},
+        "project_id": {"type": "string", "minLength": 1},
+        "subject_id": {"type": "string", "minLength": 1},
+        "subject_type": {"enum": ["NORMATIVE", "OPERATIONAL", "DECISION", "RUNTIME", "CAPABILITY"]},
+        "scope": {"$ref": "#/$defs/scope"},
+        "authority_role": {"type": "string", "minLength": 1},
+        "lifecycle_state": {"enum": ["ACTIVE", "COMPLETED", "BLOCKED", "UNRESOLVED"]},
+        "authority_owner": {"$ref": "#/$defs/authority"},
+        "last_accepted_event_id": {"type": "string", "minLength": 1},
+        "last_verification_at": {"type": "string", "format": "date-time"},
+        "evidence_refs": {"type": "array", "items": {"$ref": "#/$defs/evidence"}},
+        "freshness_deadline": {"type": ["string", "null"], "format": "date-time"},
+        "claims": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "blockers": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "next_actions": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "affected_document_ids": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "affected_capability_ids": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "candidate_event_ids": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "unresolved_reasons": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "history": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id", "event_sha256", "revision", "status",
+        "replacement_event_id", "reason"
+      ],
+      "properties": {
+        "event_id": {"type": "string", "minLength": 1},
+        "event_sha256": {"$ref": "#/$defs/hash"},
+        "revision": {"type": ["integer", "null"], "minimum": 1},
+        "status": {"enum": ["ACTIVE", "SUPERSEDED", "INVALIDATED", "EXPIRED", "CONFLICT", "UNRESOLVED"]},
+        "replacement_event_id": {"type": ["string", "null"]},
+        "reason": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

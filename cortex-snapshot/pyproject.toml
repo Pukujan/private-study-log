@@ -1,0 +1,145 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stupidly-simple-cortex"
+version = "0.1.0"
+description = "Cortex workspace scaffold with search, audit, fetch, and plugin hooks"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "All Rights Reserved" }
+authors = [{ name = "Pujan" }]
+keywords = ["hermes", "cortex", "fts5", "audit", "agent"]
+dependencies = ["PyYAML>=6.0", "mcp>=1.2.0", "uuid6>=2024.1.12", "sqlite-vec>=0.1.9", "anthropic>=0.32.0", "cryptography>=42.0"]
+
+[project.optional-dependencies]
+eval = ["ranx>=0.3.0"]
+memory = ["mem0ai>=1.0.6"]
+# Phase 2 vector leg (gates 2.2/2.3). model2vec is a static-embedding model
+# (no torch) -- verified to install and run on Windows with zero heavy
+# transitive deps. sqlite-vec is already a core dependency (the vector store);
+# only the embedder is optional, so core search stays dependency-light and
+# degrades to pure BM25 when this extra isn't installed.
+vector = ["model2vec>=0.3.0"]
+# HTTP transport (GAP-CORTEX-0015 H1): serve the MCP over streamable-http (Railway/VPS).
+# starlette ships with `mcp`; only the ASGI server (uvicorn) is extra. Not needed for
+# local stdio use (`cortex-mcp`), so core stays lightweight.
+http = ["uvicorn>=0.30"]
+# Playwright fetch backend (docs/research/fetch-discovery-backends-design-2026-07-06.md):
+# headless-Chromium render for JS-heavy/SPA doc sites whose real content only
+# materializes after JS runs (carbondesignsystem.com, atlassian.design, ...) --
+# the native urllib backend gets only the pre-render shell there. Optional and
+# heavy (~hundreds of MB browser binary via `playwright install chromium`);
+# fetch degrades to native when it isn't installed, so core stays light.
+browser = ["playwright>=1.40"]
+# OpenTelemetry cost/latency/token export (GAP I6). Emits one gen_ai.* span per unit of model
+# work (tokens/cost/latency + session.id/prompt.id correlation -- the join key Claude Code's own
+# native client-side OTel export uses, docs/PHASE-GATES.md 3.5). OPTIONAL and OFF by default:
+# without this extra cortex_core.otel degrades to a true no-op (zero cost, no crash), and even
+# installed it exports nothing unless CORTEX_OTEL selects a LOCAL stdout/OTLP target -- never a
+# paid/hosted collector by default (the owner controls that). The disk metrics ledger
+# (CORTEX_METRICS_LEDGER, the A3 feed) works with or without this extra.
+otel = ["opentelemetry-sdk>=1.39", "opentelemetry-exporter-otlp-proto-http>=1.39"]
+# OCR/TTS ingest lane (gap I2). The image/PDF -> text lane picks the best available
+# OPTIONAL and the lane degrades gracefully (and quarantines honestly -- never
+# fabricates) when none is present. This extra installs the two *local* backends
+# (Tesseract wrapper + Pillow, and PaddleOCR) plus offline TTS; the strongest
+# backend, the VLM/LLM OCR path, needs NO extra dep -- it reuses httpx (already core
+# via anthropic) against an OpenAI-compatible vision endpoint configured in .env
+# (VLM_OCR_API_URL/KEY/MODEL, the same judge.py API-tier pattern). Tesseract also
+# needs its system binary on PATH; PaddleOCR pulls paddlepaddle (heavier) -- both
+# stay optional so core is dependency-light.
+ocr = ["pytesseract>=0.3.10", "Pillow>=10.0", "pyttsx3>=2.90"]
+ocr-paddle = ["paddleocr>=2.7", "paddlepaddle>=2.6"]
+# UK AISI inspect-ai runner (E1 build-vs-adopt spike, docs/design/inspect-ai-adoption-plan-2026-07-14.md).
+# OPTIONAL and heavy (~30 transitive deps incl. pydantic v2, boto3/s3fs, textual). Only the
+# evals/inspect_port/ adapter needs it; the objective lanes (evals/objective_*/) and the Cortex
+# checkers run WITHOUT it. Spike only -- not a migration; keep core dependency-light.
+inspect = ["inspect_ai>=0.3.246"]
+
+[project.scripts]
+cortex-govern = "cortex_core.govern:main"
+cortex-search = "cortex_core.search:main"
+cortex-audit = "cortex_core.audit:main"
+cortex-fetch = "cortex_core.fetch:main"
+cortex-doctor = "cortex_core.doctor:main"
+cortex-project-state = "cortex_core.project_state_cli:main"
+cortex-update = "cortex_core.update:main"
+cortex-fingerprint = "cortex_core.fingerprint:main"
+cortex = "cortex_core.__main__:main"
+cortex_write_log = "cortex_core.audit:main"
+cortex_audit = "cortex_core.audit:read_main"
+cortex-mcp = "cortex_core.mcp:main"
+cortex-mcp-http = "cortex_core.http_server:main"
+cortex-eval = "cortex_core.eval:main"
+cortex-graded-eval = "cortex_core.graded_eval:main"
+cortex-results = "cortex_core.results_ledger:main"
+cortex-ingest = "cortex_core.ingest:main"
+cortex-contract = "cortex_core.contract:main"
+cortex-pattern = "cortex_core.patterns:main"
+cortex-playbook = "cortex_core.playbooks:main"
+cortex-scope-pack = "cortex_core.packs:main"
+cortex-research = "cortex_core.research:main"
+cortex-deep-audit = "cortex_core.deep_audit:main"
+cortex-repo-audit = "cortex_core.repo_audit:main"
+cortex-telemetry-import = "cortex_core.telemetry:main"
+cortex-telemetry-digest = "cortex_core.output_contract:main"
+cortex-deep-research = "cortex_core.deep_research:main"
+cortex-registry = "cortex_core.registry:main"
+cortex-tasks = "cortex_core.task_ledger:main"
+cortex-ontology = "cortex_core.ontology:main"
+cortex-app-gate = "cortex_core.app_gates:main"
+cortex-pack-exp = "cortex_core.pack_experiment:main"
+cortex-build = "cortex_core.vague_build:main"
+cortex-fanout = "cortex_core.fanout:main"
+cortex-models = "cortex_core.model_probe:main"
+cortex-reconcile = "cortex_core.closeout_reconcile:main"
+cortex-sweep = "cortex_core.workspace_sweep:main"
+cortex-response-bias-mcp = "cortex_core.response_bias_mcp:main"
+cortex-tool-surface = "cortex_core.tool_surface:main"
+cortex-theater-audit = "cortex_core.theater_audit:main"
+cortex-catalog-reconcile = "cortex_core.catalog_reconcile:main"
+cortex-gap = "cortex_core.gap_ledger:main"
+cortex-arbitrate = "cortex_core.arbitrate:main"
+cortex-arbitration-rigor = "cortex_core.arbitration_rigor:main"
+cortex-ocr = "cortex_core.ocr_tts:main"
+cortex-key = "cortex_core.keys:main"
+cortex-keys-dashboard = "cortex_core.keys_dashboard:main"
+cortex-self-learning = "cortex_core.self_learning:main"
+cortex-oracle-crossval = "cortex_core.oracle_crossval:main"
+cortex-freshness = "cortex_core.freshness:main"
+
+[tool.setuptools]
+packages = ["cortex_core"]
+
+[tool.ruff]
+# Lint gate. Enforced in CI + pre-commit on the operational tooling we own (scripts/, ops/) --
+# not yet repo-wide, because cortex_core/ carries a pre-existing backlog owned by other work
+# (adopt incrementally). The ruleset is deliberately the *real-bug* core (pyflakes F, syntax E9,
+# bugbear B), not style churn like line-length or import-order.
+line-length = 100
+target-version = "py310"
+extend-exclude = [
+    "external", "deprecated", "build", "dist", "ops-local",
+    "_scratch", "docs", "audit", "calibration", "research", ".venv-aider",
+]
+
+[tool.ruff.lint]
+select = ["F", "E9", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# Test/gate files legitimately manipulate sys.path before importing, and use assert-heavy patterns.
+"tests/*" = ["E402"]
+"scripts/ci/*" = ["E402"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+pythonpath = ["."]
+markers = [
+    "integration: end-to-end tests that spawn processes / launch fixture apps / drive a browser (the slow lane; auto-applied in tests/conftest.py). Run the fast lane with `-m 'not integration'`.",
+]
+# Bare `pytest` must not collect vendored submodules (external/*, whose own test suites need
+# deps we don't ship) or scratch/deprecated trees -- else collection errors mask the real suite.
+# The real suite is tests/ (+ evals/ importers). Keeps CI-ability from rotting on vendored pollution.
+norecursedirs = ["external", "deprecated", ".venv*", "_scratch*", "*.egg", "build", "dist", "ops-local", ".claude", ".cortex"]

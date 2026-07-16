@@ -73,6 +73,110 @@ A cheap implementation that creates recurring drift may be more expensive than a
 
 ---
 
+## Evidence From The Brain (Source Citations For Evaluation)
+
+The following are verified citations from the Cortex codebase and brain docs. Use these to ground every assessment — no pushback without a source.
+
+### The v0 disease is documented in the brain itself
+
+**Disease A (tool-surface bloat):**
+- Source: `docs/ARCH-DEBUG-DECISION-mcp-tool-surface-and-coercion-2026-07-08.md:38-46`
+- Quote: "Disease A — eager tool-surface bloat. All 38 cortex_* MCP tools load into every agent's context whether used or not. Measured: 12,237 tokens for one server."
+- Quote: "Status: diagnosed and baseline-measured. **Nothing shipped.** Ships only on a measured A/B delta."
+
+**Disease B (mandatory-pipeline coercion):**
+- Source: `docs/ARCH-DEBUG-DECISION-mcp-tool-surface-and-coercion-2026-07-08.md:42-46`
+- Quote: "Disease B — mandatory-pipeline coercion. Four stacked gates on the write path refuse until the agent has driven a chart walk / contract / doc-fetch, each refusal instructing the model to call more tools. Default-on. This manufactures the 'unending tool-call pipeline' — it doesn't prevent it."
+
+**Evidence theater is a named anti-pattern:**
+- Source: `docs/BUILD-PLAN.md:472`
+- Quote: "an MCP tool that doesn't do anything real is exactly the 'evidence theater' this project's own principles warn against"
+- Source: `docs/research/SELF-IMPROVEMENT-LEDGER-MINING-2026-07-07.md:95-110`
+- The `evidence_theater_warning` function was actually built and tested in `cortex_core/audit.py`. It flags "fields filled with real-but-irrelevant spans." Tests pass.
+
+### The decision log confirms Cortex's purpose is downstream prevention
+
+- Source: `docs/DECISION-LOG.md:23` (Decision #8)
+- Quote: "Unit tests + a scaffolded A/B ≠ a validated harness; shipping without e2e is exactly the fake-success failure Cortex exists to prevent"
+- Source: `docs/DECISION-LOG.md:24` (Decision #9, standing)
+- Quote: "Tool-surface/context bloat is the exact problem the wrapper + progressive-disclosure skill-tree exist to solve"
+- Source: `docs/DECISION-LOG.md:25` (Decision #10)
+- Quote: "shipping it as 'deterministic' would be theater"
+
+### The runtime contract concept already exists
+
+- Source: `docs/DECISION-LOG.md:16` (Decision #1)
+- Quote: "Two-plane wrapper — Plane A (remote brain, read-only, consent-gated) + Plane B (local cortex_core over his OWN corpus), not a thin remote-only client"
+- Source: `docs/DECISION-LOG.md:22` (Decision #7)
+- Quote: "Wrapper drives his external-model agent through the engine loop (can't skip); Claude-Code (Plane-1) stays disclosure-only"
+- The "service contract" in ChatGPT's definition formalizes what Decision #1 already established. It's not new scope.
+
+### Strong/weak model routing already exists
+
+- Source: `docs/DECISION-LOG.md:20` (Decision #5)
+- Quote: "Codex arbitration model BY STAKES — sol@xhigh for core-Cortex-design decisions · terra for one-off reviews · never luna (weak CLI default)"
+- Source: `docs/DECISION-LOG.md:21` (Decision #6)
+- big-pickle placed as upper-mid tier, later measured 0.964 on BFCL lane
+- Fable's plan ignores this. The definition makes it central.
+
+### Provenance tiers exist but are source-level, not value-level
+
+- Source: `docs/DECISION-LOG.md:29` (Decision #14)
+- Quote: "Stamp hard_gold/synthetic_consensus/advisory/non_human_verified/human_verified — honesty via labels, never via blocking"
+- These are **source provenance** labels (who produced the evidence). ChatGPT's evidence labels (MEASURED/DERIVED/FORECAST/QUALITATIVE/UNKNOWN) are **value confidence** labels (what type of claim a number is making). The brain doesn't have these. That's a real gap.
+
+### Speed over verification is a standing decision
+
+- Source: `docs/DECISION-LOG.md:17` (Decision #2)
+- Quote: "Use whatever oracle evidence exists NOW, label by provenance, human review is an optional later upgrade — never a blocker"
+- Source: `docs/DECISION-LOG.md:30` (Decision #15, standing)
+- Quote: "Speed over verification loops — One strong-model pass (Fable/sol/terra) = human-verify proxy; no review loops; deterministic gates are the backstop"
+- ChatGPT's "abstention principle" correction (Cortex must know when to abstain) is NOT in the decision log. The brain says "be honest about provenance" but doesn't say "refuse to act when you don't know." That's a real gap.
+
+### Measurement infrastructure exists but isn't wired
+
+- Source: `docs/HARNESS-SCORECARD-CONSOLIDATED.md:52`
+- Quote: "Hallucination catching / eval gates — PARTIAL (lab only) — strong in the lab (objective lanes, anti-evidence-theater, faithfulness); **not a runtime axis**"
+- Source: `docs/GAP-CLOSURE-PLAN.md:127`
+- Quote: "wire a real metrics.json + evals/results.jsonl ledger"
+- Source: `evals/results.jsonl` exists with 36 entries (verified: `wc -l`)
+- The cost model isn't unmeasurable — it's unmeasured. Those are different problems.
+
+### The circular validation problem is real and documented
+
+- Source: `docs/HARNESS-SCORECARD-CONSOLIDATED.md:37`
+- The "no family bias" claim was retracted as confounded (gold + rubric both Anthropic-authored).
+- The decision log does NOT record this retraction. It's in the scorecard but not in the ground-truth decision log.
+- ChatGPT's correction #3 ("model recommends; does not authorize or certify") addresses this, but the definition doesn't explicitly name the circular validation risk.
+
+### Gap ledger: built but empty
+
+- Source: `cortex_core/gap_ledger.py` — 907 lines of tested code
+- The `gaps/` directory does not exist. Zero data ever populated.
+- This is the clearest evidence of the three-stage failure pattern: design without consumer → build without wiring → document without measuring.
+
+### Empty ontology predicates
+
+- Source: `docs/ontology/schema.yaml` — `implements` and `part_of` predicates defined
+- Source: `docs/ontology/relations.jsonl` — 0 relations for either predicate (verified: `grep -c`)
+- 223 entities, 91 relations exist for other predicates. The ontology works for versioning. It doesn't work for operations.
+
+### BUILD-PLAN was already this ambitious
+
+- Source: `docs/BUILD-PLAN.md:460-502` (Phase 3.1)
+- Phase 3.1 alone includes: tool registration, SLIs, status, search, resources, prompts, Claude Code bootstrap, OAuth 2.1, progressive disclosure, stateless protocol core, RC target.
+- That's 8+ capabilities in one phase. Six layers is fewer than what BUILD-PLAN describes.
+- The 14 subsystems aren't evidence of over-ambition. They're evidence of building everything at 40% instead of one thing at 100%.
+
+### Anti-v0 discipline exists in the brain but was never enforced
+
+- Source: `docs/ARCH-DEBUG-DECISION-mcp-tool-surface-and-coercion-2026-07-08.md:57`
+- Quote: "Ships only on a measured A/B delta (§7), the same gate that shipped retrieval 2.3 and rejected 2.4/2.5/2.6."
+- The measurement gate exists. It worked for retrieval (shipped 2.3, rejected 2.4/2.5/2.6). But it was never applied to the gap ledger, the ontology predicates, or the context packets.
+- Fable's anti-v0 guardrails formalize what the brain already says but doesn't enforce.
+
+---
+
 ## Fable's Build Plan (What Is Proposed)
 
 ### The plan's diagnosis

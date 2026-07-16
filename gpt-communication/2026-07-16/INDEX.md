@@ -21,6 +21,8 @@ All communication is dated and indexed here.
 |---|-----------|------|---------|--------|
 | 1 | OUT → ChatGPT | `BRIEF-v4-evidence-based-build-plan.md` | Evidence-based build plan (no more v0s) | Sent ✓ |
 | 2 | ChatGPT → IN | `RESPONSE-v4-cortex-definition-corrections.md` | 7 corrections + north star definition | Received ✓ |
+| 3 | ChatGPT → IN | (conversation) | Expanded definition: runtime-independent assurance platform | Received ✓ |
+| 4 | OUT → ChatGPT | `BRIEF-v5-deep-research-plan-evaluation.md` | Deep research: evaluate Fable's plan against Cortex definition | Awaiting send |
 
 ---
 

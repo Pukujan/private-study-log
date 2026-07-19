@@ -1,211 +1,142 @@
-# Cortex research path — end-to-end flowchart (2026-07-19)
+# Cortex research path — end-to-end flowchart (2026-07-19, v2 mobile)
 
-**Audience:** owner (non-expert-friendly)  
-**Why this exists:** Mermaid in chat clients often does not render. This page is published so GitHub (and the HTML companion) can render the diagrams.  
-**Repo note:** `private-study-log` is currently **public** on GitHub despite the name — treat content accordingly.
+**Audience:** owner (phone + laptop)  
+**Diagram standard:** `WORK-METHODOLOGIES.md` **M27** (vertical / mobile-first; dual channel)  
+**HTML (best on phone):** [cortex-research-path-flowchart-2026-07-19.html](./cortex-research-path-flowchart-2026-07-19.html)
 
-**Sources (Cortex corpus, not vibes):**
-- `docs/harness/KNOWLEDGE-ESCALATION.md` (normative target + “not enforced today”)
-- `cortex_core/research.py` (`run_research`)
-- `cortex_core/mcp.py` (`cortex_register_source` — caller has web tools; Cortex does not)
-- `docs/harness/START-HERE.md` / `CAPABILITY-STATUS.md`
-- OpenCode session 2026-07-19: bare `llm_complete` panels vs tool-capable drivers
+All Mermaid below is **`flowchart TB`** (top→bottom). Each section has a text step list first.
 
 ---
 
-## 0. One-line mental model
+## 0. One-line model
 
 ```text
-Cortex  =  local memory + fetch-of-REGISTERED-URLs + cite/sufficiency gates
-Driver  =  discovery (web) + tools + mutation
-Bare llm_complete  =  judge over text you already packed  (NOT research)
-fanout (this repo)  =  multi-model BUILD executors  (NOT web-research fanout)
+Cortex  = local memory + fetch of REGISTERED URLs + cite/sufficiency gates
+Driver  = web discovery + tools + mutation
+Bare llm_complete = judge over a pack (NOT research)
+fanout (this repo) = multi-model BUILD (NOT web-research fanout)
 ```
 
 ---
 
-## 1. Why it was built this way (not “lazy”)
+## 1. Target path (contract)
 
-| Design goal | Consequence for research |
-|-------------|---------------------------|
-| Evidence over vibes | Prefer local, hashed, re-searchable sources over live snippets |
-| Don’t trust model confidence | Sufficiency = gates/receipts, not “I researched enough” |
-| Don’t poison the Brain | Web discovery is **driver-side**; `register_source` is **admin-gated** |
-| Cheap / offline-capable | No paid search API required; agent-assisted discovery |
-| Fail closed on “researched” | Missing sources → `needs_sources` / `UNRESOLVED`, not fake completeness |
-
-This is closer to **enterprise RAG + gated ingest** than to Perplexity / multi-agent web research products.
-
----
-
-## 2. Target path (what the contract says you should get)
+**Steps:**
+1. User request  
+2. Brain recall  
+3. Tenant / local recall  
+4. Coverage + freshness + risk → sufficient **or** driver web  
+5. register_source  
+6. bounded_fetch + SHA-256  
+7. Cited local report  
+8. Freeze research brief → freeze contracts  
+9. Execute → eval / human → KEDB  
 
 ```mermaid
 flowchart TB
-  U[User request] --> BRAIN[Brain recall<br/>docs / accepted / KEDB patterns]
-  BRAIN --> LOCAL[Tenant / local recall<br/>project docs / closeouts / incidents]
-  LOCAL --> DEC{Coverage + freshness + risk<br/>deterministic decision}
-  DEC -->|sufficient| FREEZE_R[Freeze research / adoption brief]
-  DEC -->|insufficient| DISC[Driver web discovery<br/>WebSearch / WebFetch]
-  DISC --> REG[register_source<br/>admin + SSRF checks]
-  REG --> FETCH[bounded_fetch → local snapshot + SHA-256]
-  FETCH --> REPORT[Cited local research report<br/>unanswered questions visible]
-  REPORT --> FREEZE_R
-  FREEZE_R --> FREEZE_C[Freeze success + execution contracts]
-  FREEZE_C --> BUILD[Execute under state machine]
-  BUILD --> EVAL[Hidden oracle / independent replay / human]
-  EVAL --> KEDB[Incident / KEDB / promotion updates]
+  U["1 · User request"] --> B["2 · Brain recall"]
+  B --> L["3 · Tenant / local recall"]
+  L --> D{"4 · Coverage + risk?"}
+  D -->|sufficient| FR["8a · Freeze research brief"]
+  D -->|insufficient| W["5 · Driver web discovery"]
+  W --> R["6 · register_source"]
+  R --> F["7 · fetch + SHA-256"]
+  F --> RP["Cited local report"]
+  RP --> FR
+  FR --> FC["8b · Freeze contracts"]
+  FC --> X["9 · Execute"]
+  X --> E["Hidden eval / human"]
+  E --> K["KEDB / promotion"]
 ```
 
 ---
 
-## 3. What `cortex_research` actually does in code
+## 2. What cortex_research does
+
+**Steps:** question → optional frame → load registry → select sources → fetch registered only → local gather → cite_check → needs_sources? → optional summarize → write_report  
 
 ```mermaid
-flowchart LR
-  Q[question] --> F{do_frame?}
-  F -->|yes| H1[Haiku frame → sub_questions]
-  F -->|no| SQ[sub_questions = question]
-  H1 --> REG[load sources.yaml registry]
+flowchart TB
+  Q["1 · question"] --> FR{"2 · do_frame?"}
+  FR -->|yes| H1["Haiku → sub-questions"]
+  FR -->|no| SQ["sub_questions = question"]
+  H1 --> REG["3 · load sources.yaml"]
   SQ --> REG
-  REG --> SEL[select_sources by topics]
-  SEL --> BF{do_fetch?}
-  BF -->|yes| GET[bounded_fetch ONLY registered URLs]
-  BF -->|no| EV
-  GET --> EV[gather_evidence on LOCAL index<br/>Brain + tenant]
-  EV --> CC[cite_check<br/>coverage / corroboration / unanswered]
-  CC --> GAP[assess_source_gap → needs_sources?]
-  GAP --> SUM{do_summarize?}
-  SUM -->|yes| H2[Haiku summarize findings]
-  SUM -->|no| WR
-  H2 --> WR[write_report + rebuild tenant index]
+  REG --> SEL["4 · select_sources"]
+  SEL --> BF{"5 · do_fetch?"}
+  BF -->|yes| GET["fetch REGISTERED urls only"]
+  BF -->|no| EV["6 · gather_evidence LOCAL"]
+  GET --> EV
+  EV --> CC["7 · cite_check"]
+  CC --> GAP["8 · needs_sources?"]
+  GAP --> SUM{"9 · summarize?"}
+  SUM -->|yes| H2["Haiku summarize"]
+  SUM -->|no| WR["10 · write_report"]
+  H2 --> WR
 ```
-
-**Critical:** there is **no** step “open the open web and pick URLs.”  
-Web only enters after **driver discovers URL → register_source → fetch to disk**.
 
 ---
 
-## 4. Full system map (driver + Cortex + sufficiency)
+## 3. Driver + Cortex + sufficiency
+
+**Steps:** user → search → research → needs_sources? → (web → register → re-run) **or** policy → independent → human → receipt  
 
 ```mermaid
 flowchart TB
-  subgraph DRIVER["DRIVER — Hermes / Claude Code / OpenCode"]
-    U[User question]
-    W[WebSearch / WebFetch / browser]
-    T[Shell / files / edits]
-  end
-
-  subgraph CORTEX["CORTEX — no open-web discovery"]
-    CS[cortex_search / cortex_scope_pack]
-    CR[cortex_research pipeline]
-    NS{needs_sources?}
-    REG[register_source admin-only]
-    SNAP[local snapshot + hash]
-  end
-
-  subgraph SUFF["Sufficiency — builder is NOT authority"]
-    POL[Policy / mechanical floor]
-    IND[Independent domain review]
-    HUM[Human high-risk]
-    REC[SUFFICIENT_FOR_DECISION / UNRESOLVED / ABSTAIN]
-  end
-
-  subgraph OUT["After research"]
-    FRZ[Freeze contracts]
-    IMP[Implement]
-    EVL[Hidden eval]
-    CLO[write_closeout]
-  end
-
-  U --> CS --> CR --> NS
-  NS -->|yes| W --> REG --> SNAP --> CR
-  NS -->|no / covered| POL --> IND --> HUM --> REC
-  REC --> FRZ --> IMP --> EVL --> CLO
+  U["User question"] --> CS["search / scope_pack"]
+  CS --> CR["cortex_research"]
+  CR --> NS{"needs_sources?"}
+  NS -->|yes| W["Driver web tools"]
+  W --> REG["register_source"]
+  REG --> CR
+  NS -->|no| POL["Policy floor"]
+  POL --> IND["Independent review"]
+  IND --> HUM["Human high-risk"]
+  HUM --> REC["SUFFICIENT / UNRESOLVED / ABSTAIN"]
 ```
 
 ---
 
-## 5. What went wrong in the “research subagent” panels (2026-07-19)
+## 4. Bare panel vs real research
+
+### A — Bare llm_complete (NOT research)
 
 ```mermaid
-flowchart LR
-  subgraph BAD["Bare panel — NOT Cortex research"]
-    O1[Orchestrator greps corpus + metrics]
-    P1[Text pack]
-    M1["llm_complete Sol/Grok<br/>no tools"]
-    A1[Answers only over pack]
-    O1 --> P1 --> M1 --> A1
-  end
-
-  subgraph GOOD["Cortex research product"]
-    O2[Tool-capable driver]
-    L2[Local search]
-    G2[needs_sources]
-    W2[Driver web]
-    R2[register + fetch + re-research]
-    S2[Sufficiency receipt]
-    O2 --> L2 --> G2 --> W2 --> R2 --> S2
-  end
+flowchart TB
+  O1["Orchestrator packs corpus"] --> M1["Sol / Grok — no tools"]
+  M1 --> A1["Answer over pack only"]
 ```
 
-| Expectation | Reality of bare `llm_complete` |
-|-------------|-------------------------------|
-| Subagents use search tools | No tools attached |
-| Fanout = web research | Fanout = multi-model **build** |
-| Outside-corpus citations | Only if **you** already put them in the pack |
+### B — Real Cortex research
+
+```mermaid
+flowchart TB
+  O2["Tool-capable driver"] --> L2["Local search"]
+  L2 --> G2["needs_sources?"]
+  G2 --> W2["Web discovery"]
+  W2 --> R2["register + fetch + re-run"]
+  R2 --> S2["Sufficiency receipt"]
+```
 
 ---
 
-## 6. Is “one orchestrator packs sources” enough?
-
-| Claim type | Pack-only judgment | Real research pipeline |
-|------------|--------------------|------------------------|
-| In-repo decisions, contracts, your metrics | Often **enough** | Still better with citations |
-| Open-world (market, papers, vendor status, “is Opus dead”) | **Not enough** | Need independent external captures + cite-check + named sufficiency |
-
-**Honest implementation gaps** (from `KNOWLEDGE-ESCALATION.md` “Not enforced today”):
-- Cortex does not discover the open web itself  
-- Driver web calls are not auto-joined to the research task  
-- Source diversity / trust weighting weak  
-- Quarantine + poisoning scan + Brain promotion incomplete  
-- Production sufficiency signers not fully live  
-
-So: **gates are strong in design; research depth is still half-wired.**
-
----
-
-## 7. Improvements (ranked)
+## 5. Improvements ranked
 
 | # | Improvement | Fixes |
 |---|-------------|--------|
-| 1 | **Tool-loop researchers** (search + web + fetch + register + re-research) | Agents validate outside the pack |
-| 2 | **Mandatory external leg** when `needs_sources` or EXTERNAL fact class | Stops corpus-only theater |
-| 3 | **Join driver web events → research task_id** | End-to-end audit |
-| 4 | **Multi-agent research fanout** (different vendors discover; then adjudicate) | Not build-fanout |
-| 5 | **Non-Claude summarizer** for research (today frame/summarize can be Haiku) | Anti-circularity on Claude topics |
-| 6 | **Source diversity gates** (authority, independence, freshness) | Counts ≠ corroboration |
-| 7 | Wire **assured_research** + sufficiency receipts on OpenCode path | “Researched” = receipt |
+| 1 | Tool-loop researchers | Agents validate outside the pack |
+| 2 | Mandatory external leg | Stops corpus-only theater |
+| 3 | Join driver web → task_id | Audit trail |
+| 4 | Multi-agent research fanout | ≠ build fanout |
+| 5 | Non-Claude summarizer | Anti-circularity |
+| 6 | Source diversity gates | Counts ≠ corroboration |
+| 7 | assured_research on OpenCode | Researched = receipt |
 
 ---
 
-## 8. Related study-log / Cortex artifacts
+## Methodology
 
-- Live Claude bias metrics: `ops/claude_bias_prometheus_exporter.py` (in stupidly-simple-cortex)
-- Calibration: `calibration/results/BIAS-AUDIT.md`, `evals/reports/STAGE1_REPORT.md`
-- Anti-circularity draft: `docs/design/DRAFT-CONTRACT-anti-circularity-law-2026-07-19.md`
-- OpenCode preflight/closeout: `docs/OPENCODE-PROTOCOL.md`, `cortex_core/session_preflight.py`
+- **M27** owner-legible diagrams (vertical / mobile-first) — `docs/methodology/WORK-METHODOLOGIES.md`
+- **Research-only draft contract** — `docs/design/DRAFT-CONTRACT-research-only-path-2026-07-19.md`
 
----
-
-## 9. HTML companion
-
-If Mermaid still fails in your viewer, open:
-
-**[cortex-research-path-flowchart-2026-07-19.html](./cortex-research-path-flowchart-2026-07-19.html)**
-
-(uses Mermaid.js from CDN; works offline-ish once cached in browser)
-
----
-
-*Published from OpenCode session 2026-07-19 for owner clarity. Not a freeze; not a contract amendment.*
+*v2 rebuild 2026-07-19: all charts TB; dual text+diagram; phone column.*

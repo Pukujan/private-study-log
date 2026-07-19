@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cortex research path — flowcharts (2026-07-19)</title>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "dark", securityLevel: "loose" });
+  </script>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      font-family: system-ui, Segoe UI, sans-serif;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 1.5rem;
+      background: #0d1117;
+      color: #e6edf3;
+      line-height: 1.5;
+    }
+    h1, h2 { border-bottom: 1px solid #30363d; padding-bottom: 0.3em; }
+    code, pre {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+    }
+    pre { padding: 1rem; overflow-x: auto; }
+    code { padding: 0.15em 0.4em; }
+    pre code { border: 0; padding: 0; background: transparent; }
+    .mermaid {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1rem 0 2rem;
+      overflow-x: auto;
+    }
+    table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+    th, td { border: 1px solid #30363d; padding: 0.5rem 0.75rem; text-align: left; }
+    th { background: #161b22; }
+    a { color: #58a6ff; }
+    .note { color: #8b949e; font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+  <h1>Cortex research path — end-to-end flowcharts</h1>
+  <p class="note">Published 2026-07-19 · Companion to the Markdown study log · Mermaid renders in-browser via CDN</p>
+
+  <h2>0. One-line model</h2>
+  <pre><code>Cortex  =  local memory + fetch-of-REGISTERED-URLs + cite/sufficiency gates
+Driver  =  discovery (web) + tools + mutation
+Bare llm_complete  =  judge over text you already packed  (NOT research)
+fanout (this repo)  =  multi-model BUILD executors  (NOT web-research fanout)</code></pre>
+
+  <h2>1. Target path (contract)</h2>
+  <div class="mermaid">
+flowchart TB
+  U[User request] --> BRAIN[Brain recall]
+  BRAIN --> LOCAL[Tenant / local recall]
+  LOCAL --> DEC{Coverage + freshness + risk}
+  DEC -->|sufficient| FREEZE_R[Freeze research brief]
+  DEC -->|insufficient| DISC[Driver web discovery]
+  DISC --> REG[register_source]
+  REG --> FETCH[bounded_fetch + SHA-256]
+  FETCH --> REPORT[Cited local report]
+  REPORT --> FREEZE_R
+  FREEZE_R --> FREEZE_C[Freeze contracts]
+  FREEZE_C --> BUILD[Execute]
+  BUILD --> EVAL[Hidden eval / human]
+  EVAL --> KEDB[KEDB / promotion]
+  </div>
+
+  <h2>2. What cortex_research actually does</h2>
+  <div class="mermaid">
+flowchart LR
+  Q[question] --> F{do_frame?}
+  F -->|yes| H1[Haiku frame]
+  F -->|no| SQ[sub_questions]
+  H1 --> REG[load sources.yaml]
+  SQ --> REG
+  REG --> SEL[select_sources]
+  SEL --> BF{do_fetch?}
+  BF -->|yes| GET[fetch REGISTERED urls only]
+  BF -->|no| EV
+  GET --> EV[gather_evidence LOCAL]
+  EV --> CC[cite_check]
+  CC --> GAP[needs_sources?]
+  GAP --> SUM{summarize?}
+  SUM -->|yes| H2[Haiku summarize]
+  SUM -->|no| WR
+  H2 --> WR[write_report]
+  </div>
+
+  <h2>3. Driver + Cortex + sufficiency</h2>
+  <div class="mermaid">
+flowchart TB
+  subgraph DRIVER[DRIVER has tools]
+    U[User]
+    W[Web tools]
+  end
+  subgraph CORTEX[CORTEX no open-web discovery]
+    CS[search / scope_pack]
+    CR[cortex_research]
+    NS{needs_sources?}
+    REG[register_source]
+  end
+  subgraph SUFF[Sufficiency]
+    POL[Policy floor]
+    IND[Independent review]
+    HUM[Human high-risk]
+    REC[SUFFICIENT / UNRESOLVED / ABSTAIN]
+  end
+  U --> CS --> CR --> NS
+  NS -->|yes| W --> REG --> CR
+  NS -->|no| POL --> IND --> HUM --> REC
+  </div>
+
+  <h2>4. Bare panel vs real research</h2>
+  <div class="mermaid">
+flowchart LR
+  subgraph BAD[Bare llm_complete]
+    O1[Orchestrator packs corpus]
+    M1[Sol/Grok no tools]
+    A1[Answer over pack only]
+    O1 --> M1 --> A1
+  end
+  subgraph GOOD[Cortex research]
+    O2[Tool-capable driver]
+    L2[Local search]
+    G2[needs_sources]
+    W2[Web]
+    R2[register + fetch + re-run]
+    S2[Sufficiency receipt]
+    O2 --> L2 --> G2 --> W2 --> R2 --> S2
+  end
+  </div>
+
+  <h2>5. Improvements ranked</h2>
+  <table>
+    <tr><th>#</th><th>Improvement</th><th>Fixes</th></tr>
+    <tr><td>1</td><td>Tool-loop researchers</td><td>Agents validate outside the pack</td></tr>
+    <tr><td>2</td><td>Mandatory external leg on needs_sources / EXTERNAL facts</td><td>Stops corpus-only theater</td></tr>
+    <tr><td>3</td><td>Join driver web → research task_id</td><td>Audit trail</td></tr>
+    <tr><td>4</td><td>Multi-agent research fanout</td><td>Not build-fanout</td></tr>
+    <tr><td>5</td><td>Non-Claude research summarizer</td><td>Anti-circularity</td></tr>
+    <tr><td>6</td><td>Source diversity gates</td><td>Counts ≠ corroboration</td></tr>
+    <tr><td>7</td><td>assured_research + receipts on OpenCode</td><td>Researched = receipt</td></tr>
+  </table>
+
+  <p class="note">Full prose + tables: <a href="./cortex-research-path-flowchart-2026-07-19.md">cortex-research-path-flowchart-2026-07-19.md</a></p>
+</body>
+</html>

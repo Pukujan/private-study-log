@@ -1,4 +1,4 @@
-flowchart TB
+```flowchart TB
   subgraph AUTH["Authority"]
     OG[Owner gold scores<br/>owner_abc_scores.jsonl]
     ITEMS[items.jsonl 24]
@@ -55,4 +55,4 @@ flowchart TB
   INJ -.->|style rules| P5
   INJ -.->|few-shot rules| FS
   FU -.->|paths allowed| OUT
-  OG -.->|anchor only| FC
+  OG -.->|anchor only| FC```
